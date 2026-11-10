@@ -2,16 +2,11 @@ import React from 'react';
 import {
   Siren,
   ShieldAlert,
-  Wifi,
-  WifiOff,
-  RefreshCw,
-  Globe,
   RotateCcw,
   Search,
   BarChart3,
 } from 'lucide-react';
 import { useI18n } from '../../i18n';
-import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { resetDemoData } from '../../services/mockBackend';
 
 export type NavigationTab = 'report' | 'tracking' | 'responder' | 'charts';
@@ -23,8 +18,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onResetData }) => {
-  const { lang, setLang, t } = useI18n();
-  const { isOnline, pendingCount, isSyncing, triggerManualSync } = useNetworkStatus();
+  const { t } = useI18n();
 
   const handleReset = () => {
     if (window.confirm('Reset all demo emergency reports to initial sample state?')) {
@@ -138,46 +132,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onReset
           })}
         </nav>
 
-        {/* Global Action Controls (Online, Language, Reset) */}
+        {/* Global Action Controls (Reset) */}
         <div className="flex items-center space-x-1.5 sm:space-x-2.5">
-          {/* Network / Offline Queue Status */}
-          <div className="flex items-center">
-            {isOnline ? (
-              pendingCount > 0 ? (
-                <button
-                  onClick={triggerManualSync}
-                  disabled={isSyncing}
-                  className="flex items-center space-x-1.5 bg-amber-500/10 text-amber-300 border border-amber-500/25 px-2 py-1 rounded-control text-xs font-medium hover:bg-amber-500/20 transition-colors duration-150"
-                  title="Click to sync offline reports now"
-                >
-                  <RefreshCw className={`w-3 h-3 stroke-[1.5] ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span className="font-mono text-[10px] sm:text-[11px]">Sync ({pendingCount})</span>
-                </button>
-              ) : (
-                <span className="hidden sm:flex items-center space-x-1.5 text-graphite-secondary bg-graphite-card border border-graphite-border px-2 py-1 rounded-control text-xs">
-                  <Wifi className="w-3.5 h-3.5 stroke-[1.5] text-emerald-400" />
-                  <span className="text-[10px] sm:text-[11px] font-mono">{t('online')}</span>
-                </span>
-              )
-            ) : (
-              <span className="flex items-center space-x-1.5 bg-rose-500/10 border border-rose-500/25 text-rose-300 px-2 py-1 rounded-control text-xs font-medium">
-                <WifiOff className="w-3.5 h-3.5 stroke-[1.5]" />
-                <span className="font-mono text-[10px] sm:text-[11px]">Offline ({pendingCount})</span>
-              </span>
-            )}
-          </div>
-
-          {/* Language Switcher */}
-          <button
-            onClick={() => setLang(lang === 'en' ? 'ta' : 'en')}
-            className="group flex items-center space-x-1 sm:space-x-1.5 bg-graphite-card hover:bg-sky-500/5 border border-graphite-border hover:border-sky-500/30 text-graphite-secondary hover:text-sky-300 px-2 py-1 rounded-control text-xs font-medium transition-colors duration-150"
-            aria-label="Toggle language"
-            title="Switch Language between English and Tamil"
-          >
-            <Globe className="w-3.5 h-3.5 stroke-[1.5] group-hover:text-sky-400 transition-colors" />
-            <span className="font-sans text-[11px] font-medium">{lang === 'en' ? 'தமிழ்' : 'English'}</span>
-          </button>
-
           {/* Demo Reset Button */}
           <button
             onClick={handleReset}
