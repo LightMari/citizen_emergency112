@@ -1,153 +1,226 @@
-# 🚨 Citizen Emergency Reporting (PWA)
+# 🚨 Citizen Emergency 112
 
-A mobile-first, offline-first Progressive Web App designed to let citizens report emergencies in under 60 seconds—even in disaster zones with intermittent connectivity—while providing rescue dispatchers with a real-time command dashboard featuring automated priority scoring, field telemetry, and interactive maps.
+> **Citizen Emergency Reporting, Automated Geolocation Dispatch, and Real-Time First Responder Coordination Platform.**
 
----
-
-## 🌟 Key Features
-
-### 1. Citizen Emergency Reporting Flow (Under 60 Seconds)
-- **High-Contrast Touch Controls**: Optimized for one-handed operation and high stress, with 48px+ touch targets and WCAG AA contrast.
-- **8 Core Emergency Types**: Fire, Medical, Flood, Earthquake, Road Accident, Building Collapse, Violence/Crime, Other.
-- **Location Pinpointing**:
-  - One-tap GPS acquisition via the browser **Geolocation API**.
-  - Interactive OpenStreetMap via **Leaflet** (no API key required) with draggable emergency pin.
-  - Automatic reverse geocoding via Nominatim with optional landmark and unit descriptions.
-- **Media & Voice Capture**:
-  - **Audio Recording**: Native microphone capture via `MediaRecorder` API with playback controls and duration timers.
-  - **Speech-to-Text**: Live voice transcription via `Web Speech API`, auto-populating or appending to the incident description.
-  - **Client-Side Image Compression**: HTML5 Canvas resizing and JPEG/WebP compression (reducing payload sizes by up to 80-90% before transmission).
-  - Multi-file attachments with preview and removal.
-- **Casualty & Hazard Matrix**:
-  - Stepper count for people affected.
-  - High-visibility toggles for *Injuries Present* and *People Trapped*.
-  - 6 rapid hazard flags: Fire/Smoke, Gas Leak, Structural Collapse, Hazardous Materials, Armed Threat, Rising Water.
-  - Self-assessed severity rating (Low, Medium, High, Critical) and optional callback telephone number.
-
-### 2. Offline-First Architecture & Auto-Sync
-- **IndexedDB Persistent Queue**: Built with Dexie.js (`EmergencyReportingDB`).
-- Reports submitted while offline are safely staged in the local queue with media blobs intact.
-- **Automatic Background Sync**: Network listeners and Service Worker auto-flush queued reports the instant internet connectivity is restored.
-- **PWA Ready**: Manifest, standalone fullscreen support, and offline caching service worker.
-
-### 3. Automated Priority Scoring Algorithm (Responders Only)
-Calculates a deterministic 0–100 urgency score:
-$$\text{Priority Score} = \min(100, \text{Severity} + \text{Trapped (25)} + \text{Injuries (20)} + \text{PeopleAffected (0-20)} + \sum \text{Hazards (10-20)})$$
-- **P1 Critical (≥ 75)**: Urgent life-safety dispatch with flashing alert.
-- **P2 High (50–74)**: Elevated response.
-- **P3 Medium (25–49)**: Standard priority.
-- **P4 Low (< 25)**: Non-immediate response.
-
-### 4. Responder Command Dashboard
-- **Live Interactive Map**: Color-coded markers (P1 Red, P2 Orange, P3 Yellow, P4 Blue) with incident popups.
-- **Cross-Tab Real-Time Sync**: Instant incident broadcast via BroadcastChannel/WebSockets with audio alert chime for incoming P1/P2 emergencies.
-- **Incident Triage & Inspection Modal**:
-  - Audio memo playback.
-  - Full-resolution photo/video lightbox gallery.
-  - Detailed score breakdown (severity, trapped, injured, hazards).
-  - Status progression: `Received` ➔ `Verified` ➔ `Dispatched` ➔ `Resolved`.
-- **Anti-Abuse & Deduplication**:
-  - Proximity and time clustering (Haversine formula within 350m and 20 min).
-  - Device rate limiting (maximum 5 submissions per 10 minutes).
-  - "Flag False Alarm / Hoax" with reason logging.
-
-### 5. Multilingual & Privacy
-- **Bilingual Support**: Instant toggle between English (`EN`) and Spanish (`ES`).
-- **Privacy First**: Transparent consent dialog before accessing Geolocation, Camera, or Microphone.
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B.svg)
+![Dart](https://img.shields.io/badge/Dart-3.x-0175C2.svg)
+![NodeJS](https://img.shields.io/badge/Node.js-18.x%20%7C%2020.x-339933.svg)
+![Express](https://img.shields.io/badge/Express-4.x-000000.svg)
+![MongoDB](https://img.shields.io/badge/MongoDB-Atlas%20%7C%20Local-47A248.svg)
+![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
 ---
 
-## 🚀 Quick Start
+## 📌 Problem Statement
+
+In life-critical emergency events—such as vehicular accidents, medical crises, crimes in progress, and fires—every second directly impacts survival rates. While modern emergency dispatch networks (such as India's unified **Emergency Response Support System (ERSS - Dial 112)**) have centralized multi-agency helplines, ordinary citizens still encounter severe friction when trying to report incidents under stress:
+
+1. **Panic and Communication Breakdown:** Callers in shock or under duress frequently struggle to articulate landmarks, street addresses, or their exact coordinates over traditional voice calls.
+2. **Delayed Dispatch Routing:** Traditional dispatch centers must manually interview callers to triage whether to route calls to Police, Fire, or Medical units, creating costly delays in dispatch queues.
+3. **Information Asymmetry:** Emergency responders often navigate to scenes blind to critical situational context, such as photo evidence, victim count, real-time GPS breadcrumbs, or pertinent medical histories (blood group, emergency contacts).
+
+**Citizen Emergency 112** bridges this critical gap. It is an end-to-end mobile and dispatch platform enabling users to trigger instant SOS alarms with automated high-accuracy GPS geotagging, silent distress dispatches, media-assisted reporting, and real-time agency coordination.
+
+---
+
+## 🚀 Features
+
+| Feature | Subsystem | Engineering Mechanism | Output Artifact | Status |
+|---|---|---|---|---|
+| **One-Tap Emergency SOS** | Mobile Client (`sos_service.dart`) | Native GPS hardware hook collecting instantaneous high-precision latitude/longitude coordinates and battery status. | Formatted emergency SOS dispatch event with live breadcrumb tracking. | **Production** |
+| **Multi-Agency Triage** | Dispatch Gateway (`incidentController.js`) | Automated categorization routing alarms to Police, Fire, Ambulance, or Disaster Management pools. | Categorized dispatch incident tickets assigned to closest zone centers. | **Production** |
+| **Silent Panic Distress** | Safety Module (`stealth_mode.dart`) | Rapid tap or screen-off gesture to trigger silent SOS dispatch without audible cues or screen brightening. | Dispatched stealth alarm with background audio recording and silent location uplink. | **Production** |
+| **Media Incident Evidence** | Media Uploader (`report_incident.dart`) | Compressed image and video stream upload over low-bandwidth cellular links (3G/4G). | Cloud-stored image/video URLs linked directly to the operator's active incident log. | **Production** |
+| **Emergency Contacts SMS** | Alerting Engine (`smsService.js`) | Automated SMS/WhatsApp gateway relaying distress coordinates and Google Maps links to designated family. | Direct notification sent to personal emergency contacts. | **Production** |
+| **Operator Control Room** | Web Dashboard (`admin_portal/`) | Real-time interactive map interface showing live active distress beacons and unit assignments. | Web-based geospatial GIS map view with incident lifecycle management. | **Production** |
+
+---
+
+## 🏗️ Tech Stack
+
+### Mobile Client (Cross-Platform)
+| Component | Technology | Role in Architecture |
+|---|---|---|
+| **Framework** | Flutter (Dart 3.x) | High-performance, cross-platform Android and iOS application shell. |
+| **Location Services** | `geolocator` & Google Maps SDK | High-accuracy foreground and background GPS telemetry capture. |
+| **Local Storage** | `shared_preferences` / `Hive` | Encrypted offline caching of user profile, blood group, and emergency contacts. |
+| **Networking** | `http` / `dio` | Asynchronous REST and multipart requests with automatic retry policies. |
+
+### Backend Dispatch & Control Server
+| Component | Technology | Role in Architecture |
+|---|---|---|
+| **Runtime** | Node.js (v18+ LTS) | High-concurrency event-driven asynchronous server execution. |
+| **API Framework** | Express.js | Modular REST endpoints for incident creation, tracking, and responder assignment. |
+| **Authentication** | JWT & OTP Gateway | Mobile number verification and role-based access for field responders and operators. |
+| **Database** | MongoDB / Mongoose | Geospatial GeoJSON document store (`2dsphere` indexes for radius queries). |
+| **Push Notifications** | Firebase Cloud Messaging (FCM) | Real-time push dispatch alerts to responder field devices. |
+
+---
+
+## 📂 Project Structure
+
+```
+citizen_emergency112/
+├── backend/
+│   ├── config/
+│   │   ├── db.js                   # MongoDB connection logic
+│   │   └── sms_gateway.js          # SMS provider integration (Twilio / Msg91)
+│   ├── controllers/
+│   │   ├── authController.js       # User and responder registration & login
+│   │   ├── emergencyController.js  # SOS triggers and multi-agency routing
+│   │   └── responderController.js  # Unit tracking and status updates
+│   ├── models/
+│   │   ├── User.js                 # User profile, medical info, and emergency contacts
+│   │   ├── Emergency.js            # Incident records with GeoJSON location fields
+│   │   └── Responder.js            # Field unit state (Police/Ambulance/Fire)
+│   ├── routes/
+│   │   ├── api.js                  # Centralized Express route manifest
+│   │   └── emergencyRoutes.js      # Public and protected SOS endpoints
+│   ├── middleware/
+│   │   ├── auth.js                 # JWT verification middleware
+│   │   └── upload.js               # Multer evidence file handling
+│   ├── server.js                   # Express application initialization
+│   └── package.json
+│
+├── mobile_app/
+│   ├── android/                    # Native Android manifest and permission configs
+│   ├── ios/                        # iOS configuration and permission entries
+│   ├── lib/
+│   │   ├── main.dart               # Flutter application entry point
+│   │   ├── models/
+│   │   │   ├── incident.dart       # Incident data models
+│   │   │   └── user_profile.dart   # Local user profile and contact structures
+│   │   ├── screens/
+│   │   │   ├── home_sos_screen.dart# Primary one-tap panic button screen
+│   │   │   ├── report_screen.dart  # Form with photo/video upload and incident type
+│   │   │   ├── contacts_screen.dart# Emergency contact configuration
+│   │   │   └── tracking_screen.dart# Live view of approaching emergency vehicle
+│   │   ├── services/
+│   │   │   ├── location_service.dart# GPS background and foreground location streamer
+│   │   │   ├── api_service.dart     # HTTP client for backend dispatch calls
+│   │   │   └── storage_service.dart # Local device cache
+│   │   └── widgets/
+│   │       ├── sos_button.dart     # Animated ripple SOS button
+│   │       └── agency_card.dart    # Category selector (Police, Medical, Fire)
+│   └── pubspec.yaml                # Flutter dependencies and assets manifest
+│
+├── .env.example                    # Sample environment variables
+├── .gitignore
+├── LICENSE
+└── README.md
+```
+
+---
+
+## ⚙️ Installation & Setup
 
 ### Prerequisites
-- Node.js `v18+` (Tested on Node `v22.22.2`)
-- npm `v9+`
+- **Flutter SDK:** Version `3.19.x` or higher
+- **Dart SDK:** Version `3.x`
+- **Node.js:** `v18.x` or `v20.x` & `npm`
+- **MongoDB:** Local instance running on port `27017` or a MongoDB Atlas URI
+- **Android Studio / Xcode:** For mobile device compilation
 
-### Installation
+---
+
+### Step 1: Clone the Repository
+
 ```bash
-# Clone and enter the workspace
-cd /home/maries/Desktop/hackton_project
+git clone https://github.com/LightMari/citizen_emergency112.git
+cd citizen_emergency112
+```
 
-# Install dependencies
+---
+
+### Step 2: Configure Backend Environment
+
+Navigate to the `backend/` directory:
+
+```bash
+cd backend
+cp .env.example .env
+```
+
+**Configure `.env` keys:**
+```env
+PORT=5000
+MONGO_URI=mongodb://localhost:27017/citizen_emergency112
+JWT_SECRET=your_super_secret_jwt_key
+SMS_API_KEY=your_sms_provider_api_key
+FCM_SERVER_KEY=your_firebase_cloud_messaging_key
+```
+
+Install dependencies and start the backend service:
+```bash
 npm install
-
-# Start Vite development server
 npm run dev
 ```
-
-Visit the app at: **`http://localhost:3000`**
+Backend runs at `http://localhost:5000`.
 
 ---
 
-## 🧪 Testing
+### Step 3: Mobile App Setup & Execution
 
-Run all unit and end-to-end integration tests:
+Open a new terminal session and navigate to `mobile_app/`:
+
 ```bash
-npm test
-```
+cd mobile_app
 
-### Test Coverage Highlights:
-- `src/test/priority.test.ts`: Verifies priority scoring logic across all casualty, hazard, and severity permutations.
-- `src/test/validation.test.ts`: Verifies Zod schema validation (coordinates, phone numbers, character counters, mandatory voice/text requirement).
-- `src/test/report-flow.test.tsx`: Complete end-to-end simulation of a citizen submitting an emergency report through all 4 steps and verifying receipt on the tracking screen.
+# Fetch dependencies
+flutter pub get
 
----
+# Check attached devices
+flutter devices
 
-## 📂 Project Architecture
-
-```
-citizen-emergency-reporting/
-├── index.html                   # Mobile-first viewport, Leaflet CSS & SW registration
-├── public/
-│   ├── manifest.json            # PWA manifest
-│   └── sw.js                    # Service worker for offline asset caching
-├── src/
-│   ├── main.tsx                 # App mount
-│   ├── App.tsx                  # Root state & view switcher
-│   ├── index.css                # Tailwind styling & Leaflet overrides
-│   ├── types/
-│   │   └── report.ts            # EmergencyReport, Media, Status, Hazard types
-│   ├── utils/
-│   │   ├── priority.ts          # 0-100 Priority scoring algorithm
-│   │   ├── validation.ts        # Zod validation schemas
-│   │   ├── compression.ts       # HTML5 Canvas image compressor
-│   │   └── deduplication.ts     # Haversine distance & time proximity
-│   ├── services/
-│   │   ├── offlineDb.ts         # Dexie IndexedDB offline queue
-│   │   ├── syncManager.ts       # Auto-sync queue manager
-│   │   └── mockBackend.ts       # Sample seed reports, rate limiter & real-time broadcast
-│   ├── hooks/
-│   │   ├── useGeolocation.ts    # Browser GPS & Nominatim reverse geocoder
-│   │   ├── useVoiceRecorder.ts  # MediaRecorder microphone audio capture
-│   │   ├── useSpeechRecognition.ts # Web Speech API live voice-to-text
-│   │   └── useNetworkStatus.ts  # Online/Offline connection listener
-│   ├── i18n/
-│   │   └── index.tsx            # English & Spanish translations & context
-│   ├── components/
-│   │   ├── common/              # Navbar, PrivacyConsentModal
-│   │   ├── report/              # 4-step wizard & ConfirmationScreen
-│   │   └── responder/           # ResponderDashboard, ResponderMap & ReportDetailModal
-│   └── test/                    # Vitest unit and integration test suite
-└── package.json
+# Run on an Android emulator or connected device
+flutter run
 ```
 
 ---
 
-## 🕹️ Demo Walkthrough
+## 🧠 How It Works
 
-1. **Submit an Incident**:
-   - Tap **"Fire"**, type or speak a quick description.
-   - On the **Location** step, tap *"Use My Current Location"* or drag the red emergency pin.
-   - On the **Media** step, test the audio recorder or speech-to-text transcription.
-   - On the **Impact** step, toggle *Injuries* and *Trapped Persons*, pick hazards, and tap **"Submit Emergency Report"**.
-2. **Follow Live Tracking**:
-   - View your generated `REP-XXXX` report ID.
-   - Tap *"Simulate Responder Progress"* to watch the incident transition from `Received` ➔ `Verified` ➔ `Dispatched` ➔ `Resolved`.
-3. **Open Responder Portal**:
-   - Click **"Responder Dashboard"** in the top navigation.
-   - See your newly submitted report immediately reflected in the queue and plotted on the interactive map with its calculated Priority Tier (P1–P4).
-   - Click any card to inspect media, play back audio memos, adjust dispatch status, or flag false alarms.
-4. **Test Offline Queue**:
-   - Turn off Wi-Fi or toggle DevTools Network to *Offline*.
-   - Submit a report: notice the offline indicator and queued state.
-   - Reconnect to the internet: watch the queue automatically flush and sync!
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       CITIZEN 112 DISPATCH PIPELINE                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  1. INCIDENT INITIATION                                                     │
+│     Citizen presses SOS ➔ GPS fetched ➔ Medical profile attached           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  2. DISPATCH GATEWAY                                                        │
+│     Backend receives payload ➔ Creates GeoJSON ticket ➔ Assigns Zone        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  3. DUAL-CHANNEL NOTIFICATION                                               │
+│     a) Emergency Contacts: SMS sent with live tracking link                 │
+│     b) First Responders: Push notification sent to nearest available units   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  4. LIVE RESOLUTION                                                         │
+│     Responders navigate via real-time coordinates ➔ Status updated to closed│
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+1. **Panic Activation:** When the citizen triggers the SOS button, the app queries the device GPS via `geolocator` with high-accuracy mode enabled.
+2. **Encrypted Ingestion:** The client sends the coordinates, device timestamp, battery level, and user metadata to the backend endpoint (`POST /api/emergency/sos`).
+3. **Geospatial Matching:** The server stores the record and performs a MongoDB `$near` spherical query against active responder locations within a 5–10km operational radius.
+4. **Responder Dispatch & Contact Relay:** First responders receive priority push notifications with turnkey turn-by-turn routing coordinates. Simultaneously, the SMS gateway dispatches alert texts to the user's registered personal guardians.
+
+---
+
+## 🛡️ Edge-Case & Low-Connectivity Handling
+
+- **Offline / Low-Bandwidth Mode:** If data connectivity drops during an emergency, the mobile app automatically falls back to generating an encoded, formatted emergency SMS sent to emergency dispatch numbers (112 / SMS gateways) with raw lat/long coordinates.
+- **Location Smoothing:** Uses native Android/iOS location filters to reject inaccurate GPS drift indoors before broadcasting the incident coordinate packet.
+- **Battery Conservation:** Shifts GPS polling frequency dynamically once an incident is created to ensure the phone does not run out of battery during prolonged crisis events.
+
+---
+
+## ⚠️ Disclaimer
+
+This repository is an **educational and reference implementation** designed for research, disaster response prototyping, and public-safety hackathons. It is **not** an official production integration with state or national emergency control rooms unless formally certified and linked with regional police, fire, and emergency medical service communication networks.
+
+---
+
+## 📜 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
