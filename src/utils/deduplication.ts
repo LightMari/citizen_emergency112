@@ -35,7 +35,7 @@ export interface DuplicateCheckResult {
  */
 export function checkForDuplicateReport(
   candidate: {
-    type: EmergencyType;
+    type: EmergencyType | string;
     latitude: number;
     longitude: number;
     createdAt?: string;
@@ -49,7 +49,7 @@ export function checkForDuplicateReport(
   for (const report of existingReports) {
     if (report.isFalseReport) continue;
     if (report.status === 'Resolved') continue;
-    if (report.type !== candidate.type) continue;
+    if (report.type !== candidate.type && report.category !== candidate.type) continue;
 
     const reportTime = new Date(report.createdAt).getTime();
     const timeDiffMinutes = Math.abs(candidateTime - reportTime) / (1000 * 60);

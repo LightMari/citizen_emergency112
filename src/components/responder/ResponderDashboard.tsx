@@ -119,6 +119,7 @@ export const ResponderDashboard: React.FC = () => {
     Reported: 'bg-graphite-raised text-graphite-secondary border-graphite-border',
     Received: 'bg-graphite-raised text-graphite-secondary border-graphite-border',
     Verified: 'bg-graphite-surface text-graphite-text border-graphite-border-strong',
+    Pending: 'bg-yellow-500/10 text-yellow-300 border-yellow-500/30',
     Assigned: 'bg-sky-500/10 text-sky-300 border-sky-500/30',
     Dispatched: 'bg-orange-500/10 text-orange-300 border-orange-500/30',
     'In Progress': 'bg-amber-500/10 text-amber-300 border-amber-500/30',
@@ -465,16 +466,21 @@ export const ResponderDashboard: React.FC = () => {
                   {filteredReports.map((report) => {
                     const rank = getPriorityRank(report.priorityTier);
                     const isUnassigned = !report.assignedTeamId && report.status !== 'Resolved';
+                    const isCritical = report.priorityTier === 'P1' || report.severity === 'Critical';
 
                     return (
                       <div
                         key={report.id}
                         onClick={() => setSelectedReport(report)}
-                        className={`cursor-pointer bg-graphite-card border border-graphite-border ${
+                        className={`cursor-pointer ${
+                          isCritical
+                            ? 'border-red-500/50 bg-red-950/20 shadow-[0_0_14px_rgba(239,68,68,0.15)] hover:border-red-500/80'
+                            : 'border-graphite-border bg-graphite-card'
+                        } border ${
                           priorityHovers[report.priorityTier]
                         } p-3.5 rounded-control transition-colors duration-150 space-y-2.5 group`}
                       >
-                        {/* Top Row: Type, Priority, Status */}
+                        {/* Top Row: Type, Priority, Status, Tracking ID */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
                             <span
@@ -485,11 +491,16 @@ export const ResponderDashboard: React.FC = () => {
                               {rank} • {report.priorityTier} ({report.priorityScore})
                             </span>
                             <span className="font-semibold text-xs text-graphite-text group-hover:text-emergency-accent transition-colors">
-                              {report.type}
+                              {report.title || report.type}
                             </span>
-                            <span className="font-mono text-[11px] text-graphite-muted">
-                              #{report.id}
+                            <span className="font-mono text-[11px] text-amber-300 font-bold bg-graphite-raised px-1.5 py-0.5 rounded border border-graphite-border">
+                              {report.trackingId || report.id}
                             </span>
+                            {report.reportCount && report.reportCount > 1 ? (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-500/20 text-red-300 font-semibold border border-red-500/40">
+                                🔥 {report.reportCount} reports
+                              </span>
+                            ) : null}
                           </div>
 
                           <span
@@ -500,6 +511,14 @@ export const ResponderDashboard: React.FC = () => {
                             {report.status}
                           </span>
                         </div>
+
+                        {/* Explainable Severity Line (Deliverable 2) */}
+                        {report.severityExplanation && (
+                          <div className="text-[11px] font-mono text-amber-200/90 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20 line-clamp-1">
+                            <strong className="text-amber-300">Why: </strong>
+                            {report.severityExplanation}
+                          </div>
+                        )}
 
                         {/* Description preview */}
                         <p className="text-xs text-graphite-secondary line-clamp-2 leading-relaxed">
@@ -533,9 +552,11 @@ export const ResponderDashboard: React.FC = () => {
 
                         {/* Location & Tags */}
                         <div className="flex flex-wrap items-center justify-between text-[11px] text-graphite-muted pt-2 border-t border-graphite-border gap-2">
-                          <div className="flex items-center space-x-1.5 truncate max-w-[260px]">
+                          <div className="flex items-center space-x-1.5 truncate max-w-[280px]">
                             <MapPin className="w-3 h-3 text-emergency-accent shrink-0 stroke-[1.5]" />
-                            <span className="truncate">{report.address || 'Coordinates only'}</span>
+                            <span className="truncate">
+                              {report.area ? `${report.area} • ${report.address || ''}` : (report.address || 'Coordinates only')}
+                            </span>
                           </div>
 
                           <div className="flex items-center space-x-2 shrink-0">

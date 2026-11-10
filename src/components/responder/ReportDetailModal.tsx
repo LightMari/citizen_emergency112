@@ -9,9 +9,11 @@ import {
   Truck,
   CheckCircle2,
   Zap,
+  Trash2,
+  Flame,
 } from 'lucide-react';
 import { EmergencyReport, ReportStatus, PriorityRank } from '../../types/report';
-import { updateReportStatus, flagFalseReport, getStoredTeams } from '../../services/mockBackend';
+import { updateReportStatus, flagFalseReport, getStoredTeams, deleteEmergencyReport } from '../../services/mockBackend';
 import { formatBytes } from '../../utils/compression';
 import { calculatePriorityScore, getPriorityRank } from '../../utils/priority';
 import { TeamAssignmentModal } from './TeamAssignmentModal';
@@ -26,6 +28,10 @@ export const ReportDetailModal: React.FC<ModalProps> = ({ report, onClose, onUpd
   const [showFalseReportPrompt, setShowFalseReportPrompt] = useState(false);
   const [falseReason, setFalseReason] = useState('');
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Critical indicator
+  const isCritical = report.severity === 'Critical' || report.priorityTier === 'P1';
 
   // Calculate elapsed time in minutes
   const elapsedMinutes = Math.max(
@@ -64,10 +70,19 @@ export const ReportDetailModal: React.FC<ModalProps> = ({ report, onClose, onUpd
     Low: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
   };
 
-  // Full 4-stage lifecycle tracker (Deliverable 4)
+  const handleDeleteIncident = () => {
+    if (window.confirm(`Permanently delete incident #${report.trackingId || report.id}? This action cannot be undone.`)) {
+      setIsDeleting(true);
+      deleteEmergencyReport(report.id);
+      if (onUpdated) onUpdated();
+      onClose();
+    }
+  };
+
+  // Full 4-stage lifecycle tracker (Deliverable 1 & 4)
   const lifecycleStages: Array<{ status: ReportStatus; label: string }> = [
     { status: 'Reported', label: '1. Reported' },
-    { status: 'Assigned', label: '2. Assigned' },
+    { status: 'Pending', label: '2. Pending' },
     { status: 'In Progress', label: '3. In Progress' },
     { status: 'Resolved', label: '4. Resolved' },
   ];
@@ -77,6 +92,7 @@ export const ReportDetailModal: React.FC<ModalProps> = ({ report, onClose, onUpd
       case 'Reported':
       case 'Received':
         return 0;
+      case 'Pending':
       case 'Assigned':
       case 'Verified':
         return 1;
@@ -99,9 +115,17 @@ export const ReportDetailModal: React.FC<ModalProps> = ({ report, onClose, onUpd
         aria-modal="true"
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-graphite-deep/80 backdrop-blur-sm overflow-y-auto animate-fade-in"
       >
-        <div className="bg-graphite-card border border-graphite-border-strong max-w-2xl w-full rounded-panel shadow-2xl overflow-hidden my-auto text-graphite-text max-h-[92vh] flex flex-col">
+        <div
+          className={`bg-graphite-card border ${
+            isCritical ? 'border-red-500/70 shadow-[0_0_30px_rgba(239,68,68,0.2)]' : 'border-graphite-border-strong'
+          } max-w-2xl w-full rounded-panel shadow-2xl overflow-hidden my-auto text-graphite-text max-h-[92vh] flex flex-col`}
+        >
           {/* MODAL HEADER */}
-          <div className="p-4 border-b border-graphite-border flex items-center justify-between bg-graphite-deep/95 sticky top-0 z-10">
+          <div
+            className={`p-4 border-b ${
+              isCritical ? 'border-red-500/30 bg-red-950/20' : 'border-graphite-border bg-graphite-deep/95'
+            } flex items-center justify-between sticky top-0 z-10`}
+          >
             <div className="flex items-center space-x-3">
               <span
                 className={`px-2.5 py-1 rounded text-xs font-mono font-semibold border ${
@@ -113,12 +137,19 @@ export const ReportDetailModal: React.FC<ModalProps> = ({ report, onClose, onUpd
               <div>
                 <div className="flex items-center space-x-2">
                   <h2 className="text-sm sm:text-base font-semibold text-graphite-text">
-                    {report.type} Incident
+                    {report.title || `${report.type} Incident`}
                   </h2>
-                  <span className="font-mono text-xs text-graphite-muted">#{report.id}</span>
+                  <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-graphite-raised text-amber-300 font-bold border border-graphite-border">
+                    {report.trackingId || report.id}
+                  </span>
+                  {report.reportCount && report.reportCount > 1 ? (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-500/20 text-red-300 font-semibold border border-red-500/40">
+                      🔥 {report.reportCount} reports
+                    </span>
+                  ) : null}
                 </div>
                 <span className="text-[11px] text-graphite-muted block">
-                  Logged {new Date(report.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })} ({elapsedMinutes}m ago)
+                  Area: <strong className="text-graphite-secondary">{report.area || 'Chennai'}</strong> • Logged {new Date(report.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })} ({elapsedMinutes}m ago)
                 </span>
               </div>
             </div>
@@ -131,6 +162,17 @@ export const ReportDetailModal: React.FC<ModalProps> = ({ report, onClose, onUpd
               <X className="w-4 h-4 stroke-[1.5]" />
             </button>
           </div>
+
+          {/* Explainable Severity Line (Deliverable 2) */}
+          {report.severityExplanation && (
+            <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center space-x-2 text-xs text-amber-200">
+              <Flame className="w-4 h-4 text-amber-400 shrink-0 stroke-[2]" />
+              <div>
+                <span className="font-semibold text-amber-300">Why this severity? </span>
+                <span className="font-mono text-[11px] text-amber-100/90">{report.severityExplanation}</span>
+              </div>
+            </div>
+          )}
 
           {/* LIFECYCLE STEPPER BAR (Deliverable 4) */}
           <div className="bg-graphite-deep px-4 py-2.5 border-b border-graphite-border">
@@ -444,33 +486,52 @@ export const ReportDetailModal: React.FC<ModalProps> = ({ report, onClose, onUpd
             )}
           </div>
 
-          {/* MODAL FOOTER: STATUS WORKFLOW ACTIONS */}
+          {/* MODAL FOOTER: STATUS WORKFLOW ACTIONS & DELETE */}
           <div className="p-3.5 border-t border-graphite-border bg-graphite-deep flex flex-wrap items-center justify-between gap-2.5">
-            <div className="text-xs text-graphite-muted">
-              Status: <span className="text-graphite-text font-medium">{report.status}</span>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={handleDeleteIncident}
+                disabled={isDeleting}
+                className="h-8 px-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 hover:text-red-200 text-xs font-medium rounded-control transition-colors duration-150 flex items-center space-x-1.5"
+                title="Delete this incident permanently"
+              >
+                <Trash2 className="w-3.5 h-3.5 stroke-[1.5]" />
+                <span>Delete</span>
+              </button>
+              <div className="text-xs text-graphite-muted">
+                Status: <span className="text-graphite-text font-medium">{report.status}</span>
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               <button
-                onClick={() => handleStatusChange('Assigned')}
-                disabled={report.status === 'Assigned'}
-                className="h-8 px-3 bg-graphite-raised hover:bg-sky-500/10 hover:border-sky-500/40 border border-graphite-border text-graphite-text hover:text-sky-300 text-xs font-medium rounded-control transition-colors duration-150 disabled:opacity-40"
+                onClick={() => handleStatusChange('Reported')}
+                disabled={report.status === 'Reported'}
+                className="h-8 px-2.5 bg-graphite-raised hover:bg-graphite-surface border border-graphite-border text-graphite-text text-xs font-medium rounded-control transition-colors duration-150 disabled:opacity-40"
               >
-                Mark Assigned
+                Reported
+              </button>
+              <button
+                onClick={() => handleStatusChange('Pending')}
+                disabled={report.status === 'Pending'}
+                className="h-8 px-2.5 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 text-xs font-medium rounded-control transition-colors duration-150 disabled:opacity-40"
+              >
+                Pending
               </button>
               <button
                 onClick={() => handleStatusChange('In Progress')}
                 disabled={report.status === 'In Progress'}
-                className="h-8 px-3 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 hover:border-orange-500/50 text-orange-200 text-xs font-medium rounded-control transition-colors duration-150 disabled:opacity-40"
+                className="h-8 px-2.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-orange-200 text-xs font-medium rounded-control transition-colors duration-150 disabled:opacity-40"
               >
-                Set In Progress
+                In Progress
               </button>
               <button
                 onClick={() => handleStatusChange('Resolved')}
                 disabled={report.status === 'Resolved'}
-                className="h-8 px-3 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-500/50 text-emerald-300 text-xs font-medium rounded-control transition-colors duration-150 disabled:opacity-40"
+                className="h-8 px-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium rounded-control transition-colors duration-150 disabled:opacity-40"
               >
-                Mark Resolved
+                Resolved
               </button>
             </div>
           </div>

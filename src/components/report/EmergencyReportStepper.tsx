@@ -34,8 +34,10 @@ export const EmergencyReportStepper: React.FC<StepperProps> = ({ onOpenResponder
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // Form State
+  const [title, setTitle] = useState('');
   const [type, setType] = useState<EmergencyType | ''>('');
   const [description, setDescription] = useState('');
+  const [area, setArea] = useState('T. Nagar');
   const [address, setAddress] = useState('Anna Salai, Chennai, Tamil Nadu');
   const [landmark, setLandmark] = useState('');
   const [peopleAffected, setPeopleAffected] = useState<number>(1);
@@ -44,6 +46,7 @@ export const EmergencyReportStepper: React.FC<StepperProps> = ({ onOpenResponder
   const [hazards, setHazards] = useState<HazardType[]>([]);
   const [severity, setSeverity] = useState<SeverityLevel | undefined>('High');
   const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   const [mediaFiles, setMediaFiles] = useState<DraftMediaItem[]>([]);
 
   // Errors & submission state
@@ -237,11 +240,13 @@ export const EmergencyReportStepper: React.FC<StepperProps> = ({ onOpenResponder
 
       const submissionResult = await submitEmergencyReport(
         {
+          title: title.trim() || undefined,
           type: type as EmergencyType,
           description: finalDescription,
           transcript: transcript.trim() || undefined,
           latitude: latitude ?? 13.0827,
           longitude: longitude ?? 80.2707,
+          area: area.trim() || 'T. Nagar',
           address: address.trim() || geoAddress,
           landmark: landmark.trim() || undefined,
           peopleAffected: Number(peopleAffected) || 1,
@@ -250,6 +255,7 @@ export const EmergencyReportStepper: React.FC<StepperProps> = ({ onOpenResponder
           hazards,
           severity,
           contactPhone: contactPhone.trim() || undefined,
+          contactEmail: contactEmail.trim() || undefined,
           media: mediaItems,
         },
         !isOnline
@@ -267,8 +273,10 @@ export const EmergencyReportStepper: React.FC<StepperProps> = ({ onOpenResponder
 
   const handleResetFlow = () => {
     setCurrentStep(1);
+    setTitle('');
     setType('');
     setDescription('');
+    setArea('T. Nagar');
     setAddress('Anna Salai, Chennai, Tamil Nadu');
     setLandmark('');
     setPeopleAffected(1);
@@ -277,6 +285,7 @@ export const EmergencyReportStepper: React.FC<StepperProps> = ({ onOpenResponder
     setHazards([]);
     setSeverity('High');
     setContactPhone('');
+    setContactEmail('');
     setMediaFiles([]);
     resetRecording();
     setSubmittedReport(null);
@@ -368,6 +377,8 @@ export const EmergencyReportStepper: React.FC<StepperProps> = ({ onOpenResponder
       <div className="mb-6">
         {currentStep === 1 && (
           <Step1EmergencyType
+            title={title}
+            onChangeTitle={setTitle}
             selectedType={type}
             onSelectType={(newType) => {
               setType(newType);
@@ -383,9 +394,11 @@ export const EmergencyReportStepper: React.FC<StepperProps> = ({ onOpenResponder
           <Step2Location
             latitude={latitude}
             longitude={longitude}
+            area={area}
             address={address}
             landmark={landmark}
             onChangeCoordinates={(lat, lng) => updateLocationManually(lat, lng)}
+            onChangeArea={setArea}
             onChangeAddress={setAddress}
             onChangeLandmark={setLandmark}
             onUseCurrentLocation={handleUseCurrentLocation}

@@ -1,12 +1,12 @@
 import React from 'react';
-import { Siren, ShieldAlert, Wifi, WifiOff, RefreshCw, Globe, RotateCcw } from 'lucide-react';
+import { Siren, ShieldAlert, Wifi, WifiOff, RefreshCw, Globe, RotateCcw, Search, Building2 } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { resetDemoData } from '../../services/mockBackend';
 
 interface NavbarProps {
-  activeTab: 'report' | 'responder' | 'tracking';
-  setActiveTab: (tab: 'report' | 'responder' | 'tracking') => void;
+  activeTab: 'report' | 'responder' | 'tracking' | 'departments';
+  setActiveTab: (tab: 'report' | 'responder' | 'tracking' | 'departments') => void;
   onResetData?: () => void;
 }
 
@@ -59,26 +59,51 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onReset
           <nav className="flex bg-graphite-card p-0.5 rounded-control border border-graphite-border" aria-label="Portal Navigation">
             <button
               onClick={() => setActiveTab('report')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-[6px] transition-colors duration-150 flex items-center space-x-1.5 ${
-                activeTab === 'report' || activeTab === 'tracking'
+              className={`px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-[6px] transition-colors duration-150 flex items-center space-x-1.5 ${
+                activeTab === 'report'
                   ? 'bg-red-500/10 text-red-200 border border-red-500/40 shadow-sm'
                   : 'text-graphite-secondary hover:text-red-300 hover:bg-red-500/5'
               }`}
             >
-              <Siren className={`w-3.5 h-3.5 stroke-[1.5] ${activeTab === 'report' || activeTab === 'tracking' ? 'text-red-400' : 'text-graphite-muted'}`} />
-              <span>{t('citizenReport')}</span>
+              <Siren className={`w-3.5 h-3.5 stroke-[1.5] ${activeTab === 'report' ? 'text-red-400' : 'text-graphite-muted'}`} />
+              <span className="hidden sm:inline">{t('citizenReport')}</span>
+              <span className="sm:hidden">Report</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('tracking')}
+              className={`px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-[6px] transition-colors duration-150 flex items-center space-x-1.5 ${
+                activeTab === 'tracking'
+                  ? 'bg-amber-500/10 text-amber-200 border border-amber-500/40 shadow-sm'
+                  : 'text-graphite-secondary hover:text-amber-300 hover:bg-amber-500/5'
+              }`}
+            >
+              <Search className={`w-3.5 h-3.5 stroke-[1.5] ${activeTab === 'tracking' ? 'text-amber-400' : 'text-graphite-muted'}`} />
+              <span className="hidden sm:inline">Track ID</span>
+              <span className="sm:hidden">Track</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('departments')}
+              className={`px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-[6px] transition-colors duration-150 flex items-center space-x-1.5 ${
+                activeTab === 'departments'
+                  ? 'bg-purple-500/10 text-purple-200 border border-purple-500/40 shadow-sm'
+                  : 'text-graphite-secondary hover:text-purple-300 hover:bg-purple-500/5'
+              }`}
+            >
+              <Building2 className={`w-3.5 h-3.5 stroke-[1.5] ${activeTab === 'departments' ? 'text-purple-400' : 'text-graphite-muted'}`} />
+              <span className="hidden md:inline">Departments</span>
+              <span className="md:hidden">Depts</span>
             </button>
             <button
               onClick={() => setActiveTab('responder')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-[6px] transition-colors duration-150 flex items-center space-x-1.5 ${
+              className={`px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-[6px] transition-colors duration-150 flex items-center space-x-1.5 ${
                 activeTab === 'responder'
                   ? 'bg-blue-500/10 text-blue-200 border border-blue-500/40 shadow-sm'
                   : 'text-graphite-secondary hover:text-blue-300 hover:bg-blue-500/5'
               }`}
             >
               <ShieldAlert className={`w-3.5 h-3.5 stroke-[1.5] ${activeTab === 'responder' ? 'text-blue-400' : 'text-graphite-muted'}`} />
-              <span className="hidden xs:inline">{t('responderPortal')}</span>
-              <span className="xs:hidden">Responders</span>
+              <span className="hidden sm:inline">{t('responderPortal')}</span>
+              <span className="sm:hidden">Admin</span>
             </button>
           </nav>
 

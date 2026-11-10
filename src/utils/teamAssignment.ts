@@ -80,9 +80,18 @@ export function evaluateTeamCandidates(
       const isCategoryMatch = isTeamSuitableForIncident(team.category, incident.type);
       const isAvailable = team.availability === 'Available';
 
-      // Scoring formula: prioritize availability first, then category match, then distance
+      // Scoring formula: prioritize availability first, then exact category match, then distance
       let score = distanceKm;
-      if (!isCategoryMatch) score += 50; // penalty for mismatched category
+      const isExactCategoryMatch =
+        team.category.toLowerCase() === incident.type.toLowerCase() ||
+        (incident.type === 'Medical' && team.category === 'Medical') ||
+        (incident.type === 'Fire' && team.category === 'Fire');
+
+      if (!isCategoryMatch) {
+        score += 80; // penalty for mismatched category
+      } else if (!isExactCategoryMatch) {
+        score += 25; // secondary category support penalty
+      }
       if (!isAvailable) score += 200; // heavy penalty for already busy team
 
       return {

@@ -20,9 +20,11 @@ const emergencyPinIcon = L.divIcon({
 interface LocationProps {
   latitude: number | null;
   longitude: number | null;
+  area: string;
   address: string;
   landmark: string;
   onChangeCoordinates: (lat: number, lng: number) => void;
+  onChangeArea: (area: string) => void;
   onChangeAddress: (address: string) => void;
   onChangeLandmark: (landmark: string) => void;
   onUseCurrentLocation: () => Promise<{ lat: number; lng: number; address: string } | null>;
@@ -54,9 +56,11 @@ const MapClickHandler: React.FC<{ onPositionChange: (lat: number, lng: number) =
 export const Step2Location: React.FC<LocationProps> = ({
   latitude,
   longitude,
+  area,
   address,
   landmark,
   onChangeCoordinates,
+  onChangeArea,
   onChangeAddress,
   onChangeLandmark,
   onUseCurrentLocation,
@@ -180,8 +184,40 @@ export const Step2Location: React.FC<LocationProps> = ({
         </div>
       )}
 
-      {/* Address & Landmark Inputs */}
+      {/* Area, Address & Landmark Inputs */}
       <div className="space-y-3 pt-1">
+        <div>
+          <label className="block text-xs font-medium text-graphite-secondary mb-1">
+            Area / Locality <span className="text-emergency-accent">*</span>
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={area}
+              onChange={(e) => onChangeArea(e.target.value)}
+              placeholder="e.g. T. Nagar, Guindy, Velachery, Central"
+              className="flex-1 bg-graphite-card border border-graphite-border focus:border-graphite-border-strong focus:outline-none focus:ring-1 focus:ring-graphite-border-strong rounded-control px-3 py-2 text-xs sm:text-sm text-graphite-text placeholder:text-graphite-muted"
+            />
+            <select
+              value={['T. Nagar', 'Guindy', 'Velachery', 'Central', 'Mylapore', 'Anna Nagar', 'Koyambedu', 'Manali'].includes(area) ? area : ''}
+              onChange={(e) => {
+                if (e.target.value) onChangeArea(e.target.value);
+              }}
+              className="bg-graphite-raised border border-graphite-border text-xs rounded-control px-2.5 py-2 text-graphite-secondary focus:outline-none"
+            >
+              <option value="">Quick select area...</option>
+              <option value="T. Nagar">T. Nagar</option>
+              <option value="Guindy">Guindy</option>
+              <option value="Velachery">Velachery</option>
+              <option value="Central">Central</option>
+              <option value="Mylapore">Mylapore</option>
+              <option value="Anna Nagar">Anna Nagar</option>
+              <option value="Koyambedu">Koyambedu</option>
+              <option value="Manali">Manali</option>
+            </select>
+          </div>
+        </div>
+
         <div>
           <div className="flex justify-between items-center mb-1">
             <label className="block text-xs font-medium text-graphite-secondary">

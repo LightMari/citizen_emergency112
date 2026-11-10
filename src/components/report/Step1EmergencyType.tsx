@@ -4,6 +4,8 @@ import { EmergencyType } from '../../types/report';
 import { useI18n } from '../../i18n';
 
 interface Step1Props {
+  title: string;
+  onChangeTitle: (title: string) => void;
   selectedType: EmergencyType | '';
   onSelectType: (type: EmergencyType) => void;
   description: string;
@@ -12,6 +14,8 @@ interface Step1Props {
 }
 
 export const Step1EmergencyType: React.FC<Step1Props> = ({
+  title,
+  onChangeTitle,
   selectedType,
   onSelectType,
   description,
@@ -179,11 +183,26 @@ export const Step1EmergencyType: React.FC<Step1Props> = ({
         </div>
       </div>
 
+      {/* Incident Title */}
+      <div className="space-y-1.5">
+        <label htmlFor="emergency-title" className="block text-xs font-medium text-graphite-secondary">
+          2. Incident Title (Optional)
+        </label>
+        <input
+          id="emergency-title"
+          type="text"
+          value={title}
+          onChange={(e) => onChangeTitle(e.target.value.slice(0, 150))}
+          placeholder="Brief title (e.g. Chemical spill at factory gate, Kitchen fire)"
+          className="w-full bg-graphite-card border border-graphite-border focus:border-graphite-border-strong focus:outline-none focus:ring-1 focus:ring-graphite-border-strong rounded-control px-3 py-2 text-xs sm:text-sm text-graphite-text placeholder:text-graphite-muted transition-colors duration-150"
+        />
+      </div>
+
       {/* Free-text description */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <label htmlFor="emergency-description" className="block text-xs font-medium text-graphite-secondary">
-            2. {t('descriptionLabel')}
+            3. {t('descriptionLabel')}
           </label>
           <span
             className={`text-[11px] font-mono tabular-nums ${

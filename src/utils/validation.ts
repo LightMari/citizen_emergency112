@@ -2,7 +2,9 @@ import { z } from 'zod';
 
 export const EMERGENCY_TYPES = [
   'Fire',
+  'Fire Emergency',
   'Medical',
+  'Medical Emergency',
   'Flood',
   'Earthquake',
   'Road Accident',
@@ -26,9 +28,12 @@ export const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]{6,15}$/;
 
 export const EmergencyReportSchema = z
   .object({
+    title: z.string().max(200).optional(),
+    area: z.string().max(100).optional(),
     type: z.enum(EMERGENCY_TYPES, {
       required_error: 'Please select an emergency type.',
     }),
+    category: z.string().optional(),
     description: z
       .string()
       .max(1000, 'Description cannot exceed 1000 characters')
@@ -60,6 +65,13 @@ export const EmergencyReportSchema = z
       .refine(
         (val) => !val || val.trim() === '' || phoneRegex.test(val.replace(/\s+/g, '')),
         { message: 'Invalid phone number format' }
+      ),
+    contactEmail: z
+      .string()
+      .optional()
+      .refine(
+        (val) => !val || val.trim() === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
+        { message: 'Invalid email address format' }
       ),
   })
   .refine(

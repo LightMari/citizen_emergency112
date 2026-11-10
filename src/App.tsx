@@ -4,13 +4,15 @@ import { Navbar } from './components/common/Navbar';
 import { PrivacyConsentModal } from './components/common/PrivacyConsentModal';
 import { EmergencyReportStepper } from './components/report/EmergencyReportStepper';
 import { ResponderDashboard } from './components/responder/ResponderDashboard';
+import { DepartmentDashboard } from './components/department/DepartmentDashboard';
+import { PublicTrackingView } from './components/tracking/PublicTrackingView';
 import SOSButton from './components/sos/SOSButton';
 import { SOSPanicMode } from './components/sos/SOSPanicMode';
 import { useShakeDetector } from './hooks/useShakeDetector';
 import bgWaterscape from './Misty Teal Mountain Waterscape.png';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'report' | 'responder' | 'tracking'>('report');
+  const [activeTab, setActiveTab] = useState<'report' | 'responder' | 'tracking' | 'departments'>('report');
   const [resetKey, setResetKey] = useState(0);
   const [sosActive, setSosActive] = useState(false);
 
@@ -48,11 +50,12 @@ export const App: React.FC = () => {
 
           {/* Main View Area */}
           <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6" key={resetKey}>
-            {activeTab === 'report' ? (
+            {activeTab === 'report' && (
               <EmergencyReportStepper onOpenResponder={() => setActiveTab('responder')} />
-            ) : (
-              <ResponderDashboard />
             )}
+            {activeTab === 'tracking' && <PublicTrackingView />}
+            {activeTab === 'departments' && <DepartmentDashboard />}
+            {activeTab === 'responder' && <ResponderDashboard />}
           </main>
 
           {/* One-Touch Persistent Floating Emergency SOS Button */}
