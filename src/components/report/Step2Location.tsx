@@ -4,17 +4,27 @@ import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-lea
 import L from 'leaflet';
 import { useI18n } from '../../i18n';
 
-// Clean, precise SVG emergency map marker
+// High-precision SVG teardrop emergency map marker with needle anchor at [16, 42]
 const emergencyPinIcon = L.divIcon({
   className: 'custom-emergency-pin',
   html: `
-    <div style="position: relative; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
-      <div style="position: absolute; width: 24px; height: 24px; background: rgba(229, 72, 77, 0.2); border-radius: 50%;"></div>
-      <div style="width: 14px; height: 14px; background: #e5484d; border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); z-index: 2;"></div>
+    <div style="position: relative; width: 34px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: grab;">
+      <!-- Ground pulse ring at coordinate point -->
+      <div style="position: absolute; bottom: 0px; left: 17px; transform: translateX(-50%); width: 22px; height: 11px; background: rgba(229, 72, 77, 0.5); border-radius: 50%; animation: ping 1.2s cubic-bezier(0, 0, 0.2, 1) infinite; pointer-events: none;"></div>
+      <!-- Teardrop Pin SVG -->
+      <svg viewBox="0 0 34 44" width="34" height="44" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.6));">
+        <path d="M17 42C17 42 32 27 32 16C32 7.716 25.284 1 17 1C8.716 1 2 7.716 2 16C2 27 17 42 17 42Z" 
+              fill="#e5484d" 
+              stroke="#ffffff" 
+              stroke-width="2"/>
+        <circle cx="17" cy="16" r="10" fill="#0f1115"/>
+        <circle cx="17" cy="16" r="4.5" fill="#e5484d"/>
+      </svg>
     </div>
   `,
-  iconSize: [28, 28],
-  iconAnchor: [14, 14],
+  iconSize: [34, 44],
+  iconAnchor: [17, 42],
+  popupAnchor: [0, -42],
 });
 
 interface LocationProps {
@@ -190,7 +200,7 @@ export const Step2Location: React.FC<LocationProps> = ({
           <label className="block text-xs font-medium text-graphite-secondary mb-1">
             Area / Locality <span className="text-emergency-accent">*</span>
           </label>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               value={area}
@@ -203,7 +213,7 @@ export const Step2Location: React.FC<LocationProps> = ({
               onChange={(e) => {
                 if (e.target.value) onChangeArea(e.target.value);
               }}
-              className="bg-graphite-raised border border-graphite-border text-xs rounded-control px-2.5 py-2 text-graphite-secondary focus:outline-none"
+              className="bg-graphite-raised border border-graphite-border text-xs rounded-control px-2.5 py-2 text-graphite-secondary focus:outline-none shrink-0"
             >
               <option value="">Quick select area...</option>
               <option value="T. Nagar">T. Nagar</option>

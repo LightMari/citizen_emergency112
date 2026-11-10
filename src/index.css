@@ -44,6 +44,16 @@ input, textarea, button, select {
   background: #16171a !important;
 }
 
+/* Custom transparent map pin marker wrappers (prevents Leaflet default white box) */
+.leaflet-div-icon,
+.custom-emergency-pin,
+.custom-incident-needle-pin,
+.custom-team-marker,
+.custom-enroute-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
 .leaflet-container a.leaflet-popup-close-button {
   color: #85858b !important;
   padding: 6px 8px 0 0 !important;

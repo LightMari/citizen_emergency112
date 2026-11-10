@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { I18nProvider } from './i18n';
-import { Navbar } from './components/common/Navbar';
+import { Navbar, NavigationTab } from './components/common/Navbar';
 import { PrivacyConsentModal } from './components/common/PrivacyConsentModal';
 import { EmergencyReportStepper } from './components/report/EmergencyReportStepper';
 import { ResponderDashboard } from './components/responder/ResponderDashboard';
@@ -12,7 +12,7 @@ import { useShakeDetector } from './hooks/useShakeDetector';
 import bgWaterscape from './Misty Teal Mountain Waterscape.png';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'report' | 'responder' | 'tracking' | 'departments'>('report');
+  const [activeTab, setActiveTab] = useState<NavigationTab>('report');
   const [resetKey, setResetKey] = useState(0);
   const [sosActive, setSosActive] = useState(false);
 
@@ -55,7 +55,8 @@ export const App: React.FC = () => {
             )}
             {activeTab === 'tracking' && <PublicTrackingView />}
             {activeTab === 'departments' && <DepartmentDashboard />}
-            {activeTab === 'responder' && <ResponderDashboard />}
+            {activeTab === 'responder' && <ResponderDashboard key="responder" initialViewMode="split" />}
+            {activeTab === 'charts' && <ResponderDashboard key="charts" initialViewMode="analytics" />}
           </main>
 
           {/* One-Touch Persistent Floating Emergency SOS Button */}
