@@ -80,16 +80,37 @@ export const ConfirmationScreen: React.FC<ConfirmationScreenProps> = ({
     },
   ];
 
-  const currentStageIndex = stages.findIndex((s) => s.status === report.status);
+  const getNormalizedStageIndex = (st: ReportStatus): number => {
+    switch (st) {
+      case 'Reported':
+      case 'Received':
+        return 0;
+      case 'Verified':
+      case 'Assigned':
+        return 1;
+      case 'Dispatched':
+      case 'In Progress':
+        return 2;
+      case 'Resolved':
+        return 3;
+      default:
+        return 0;
+    }
+  };
+
+  const currentStageIndex = getNormalizedStageIndex(report.status);
 
   const simulateNextStep = () => {
     const nextStages: Record<ReportStatus, ReportStatus> = {
+      Reported: 'Assigned',
       Received: 'Verified',
       Verified: 'Dispatched',
+      Assigned: 'In Progress',
       Dispatched: 'Resolved',
+      'In Progress': 'Resolved',
       Resolved: 'Resolved',
     };
-    const nextStatus = nextStages[report.status];
+    const nextStatus = nextStages[report.status] || 'Resolved';
     updateReportStatus(report.id, nextStatus);
   };
 

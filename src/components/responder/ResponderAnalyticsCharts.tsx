@@ -16,10 +16,12 @@ import {
   Users,
   RotateCcw,
 } from 'lucide-react';
-import { EmergencyReport, EmergencyType, PriorityTier, ReportStatus } from '../../types/report';
+import { EmergencyReport, EmergencyType, PriorityTier, ReportStatus, ResponseTeam } from '../../types/report';
+import { getStoredTeams } from '../../services/mockBackend';
 
 interface AnalyticsChartsProps {
   reports: EmergencyReport[];
+  teams?: ResponseTeam[];
   selectedType: EmergencyType | 'ALL';
   onSelectType: (type: EmergencyType | 'ALL') => void;
   selectedPriority: PriorityTier | 'ALL';
@@ -30,6 +32,7 @@ interface AnalyticsChartsProps {
 
 export const ResponderAnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
   reports,
+  teams: propTeams,
   selectedType,
   onSelectType,
   selectedPriority,
@@ -38,6 +41,16 @@ export const ResponderAnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
   onSelectStatus,
 }) => {
   const totalReports = reports.length;
+  const teams = propTeams || getStoredTeams();
+
+  // Key Operational Insights counts (Deliverable 6)
+  const criticalCount = reports.filter((r) => r.priorityTier === 'P1').length;
+  const availableTeamsCount = teams.filter((t) => t.availability === 'Available').length;
+  const busyTeamsCount = teams.filter((t) => t.availability === 'Busy').length;
+  const assignedCount = reports.filter(
+    (r) => r.status === 'Assigned' || r.status === 'In Progress' || r.status === 'Dispatched' || Boolean(r.assignedTeamId)
+  ).length;
+  const resolvedCount = reports.filter((r) => r.status === 'Resolved').length;
 
   // Criteria 1: Emergency Types distribution
   const typeDistribution = useMemo(() => {
@@ -166,17 +179,26 @@ export const ResponderAnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
   // Criteria 3: Status / Dispatch workflow criteria
   const statusDistribution = useMemo(() => {
     const counts: Record<ReportStatus, number> = {
+      Reported: 0,
       Received: 0,
       Verified: 0,
+      Assigned: 0,
+      'In Progress': 0,
       Dispatched: 0,
       Resolved: 0,
     };
 
     reports.forEach((r) => {
-      counts[r.status]++;
+      if (counts[r.status] !== undefined) {
+        counts[r.status]++;
+      } else {
+        counts.Received++;
+      }
     });
 
-    const maxCount = Math.max(...Object.values(counts), 1);
+    const combinedReceived = counts.Received + counts.Reported;
+    const combinedDispatched = counts.Dispatched + counts.Assigned + counts['In Progress'];
+    const maxCount = Math.max(combinedReceived, counts.Verified, combinedDispatched, counts.Resolved, 1);
 
     const meta: Array<{
       status: ReportStatus;
@@ -185,6 +207,7 @@ export const ResponderAnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
       icon: React.ComponentType<{ className?: string }>;
       color: string;
       barColor: string;
+      calculatedCount: number;
     }> = [
       {
         status: 'Received',
@@ -193,6 +216,7 @@ export const ResponderAnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
         icon: Clock,
         color: 'text-graphite-secondary',
         barColor: 'bg-graphite-secondary',
+        calculatedCount: combinedReceived,
       },
       {
         status: 'Verified',
@@ -201,6 +225,7 @@ export const ResponderAnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
         icon: ShieldCheck,
         color: 'text-indigo-400',
         barColor: 'bg-indigo-500',
+        calculatedCount: counts.Verified,
       },
       {
         status: 'Dispatched',
@@ -209,6 +234,7 @@ export const ResponderAnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
         icon: Truck,
         color: 'text-amber-400',
         barColor: 'bg-amber-500',
+        calculatedCount: combinedDispatched,
       },
       {
         status: 'Resolved',
@@ -217,11 +243,12 @@ export const ResponderAnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
         icon: CheckCircle2,
         color: 'text-emerald-400',
         barColor: 'bg-emerald-500',
+        calculatedCount: counts.Resolved,
       },
     ];
 
     return meta.map((m) => {
-      const count = counts[m.status];
+      const count = m.calculatedCount;
       const percentage = totalReports > 0 ? Math.round((count / totalReports) * 100) : 0;
       const relativeWidth = Math.max(Math.round((count / maxCount) * 100), count > 0 ? 8 : 2);
       return {
@@ -327,6 +354,45 @@ export const ResponderAnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
               <span>Clear Filter ({activeFiltersCount})</span>
             </button>
           )}
+        </div>
+
+        {/* 6 Key Operational Insights Cards (Deliverable 6) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          <div className="bg-graphite-raised/80 border border-graphite-border p-3 rounded-control">
+            <span className="text-[10px] font-mono uppercase text-graphite-muted block">Total Incidents</span>
+            <div className="text-xl font-mono font-bold text-graphite-text mt-0.5">{totalReports}</div>
+            <span className="text-[10px] text-graphite-secondary">Chennai Telemetry</span>
+          </div>
+
+          <div className="bg-red-500/10 border border-red-500/25 p-3 rounded-control">
+            <span className="text-[10px] font-mono uppercase text-red-400 block">Critical Incidents</span>
+            <div className="text-xl font-mono font-bold text-red-300 mt-0.5">{criticalCount}</div>
+            <span className="text-[10px] text-red-400/80">Immediate P1 Action</span>
+          </div>
+
+          <div className="bg-emerald-500/10 border border-emerald-500/25 p-3 rounded-control">
+            <span className="text-[10px] font-mono uppercase text-emerald-400 block">Available Teams</span>
+            <div className="text-xl font-mono font-bold text-emerald-300 mt-0.5">{availableTeamsCount}</div>
+            <span className="text-[10px] text-emerald-400/80">Units On Standby</span>
+          </div>
+
+          <div className="bg-amber-500/10 border border-amber-500/25 p-3 rounded-control">
+            <span className="text-[10px] font-mono uppercase text-amber-400 block">Busy Response Teams</span>
+            <div className="text-xl font-mono font-bold text-amber-300 mt-0.5">{busyTeamsCount}</div>
+            <span className="text-[10px] text-amber-400/80">Deployed In Field</span>
+          </div>
+
+          <div className="bg-sky-500/10 border border-sky-500/25 p-3 rounded-control">
+            <span className="text-[10px] font-mono uppercase text-sky-400 block">Assigned Incidents</span>
+            <div className="text-xl font-mono font-bold text-sky-300 mt-0.5">{assignedCount}</div>
+            <span className="text-[10px] text-sky-400/80">Teams Dispatched</span>
+          </div>
+
+          <div className="bg-emerald-500/5 border border-emerald-500/20 p-3 rounded-control">
+            <span className="text-[10px] font-mono uppercase text-emerald-400 block">Resolved Incidents</span>
+            <div className="text-xl font-mono font-bold text-emerald-300 mt-0.5">{resolvedCount}</div>
+            <span className="text-[10px] text-graphite-secondary">Case Closed</span>
+          </div>
         </div>
 
         {/* 4 Summary Micro-KPIs */}

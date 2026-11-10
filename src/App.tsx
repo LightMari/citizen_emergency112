@@ -4,11 +4,20 @@ import { Navbar } from './components/common/Navbar';
 import { PrivacyConsentModal } from './components/common/PrivacyConsentModal';
 import { EmergencyReportStepper } from './components/report/EmergencyReportStepper';
 import { ResponderDashboard } from './components/responder/ResponderDashboard';
+import SOSButton from './components/sos/SOSButton';
+import { SOSPanicMode } from './components/sos/SOSPanicMode';
+import { useShakeDetector } from './hooks/useShakeDetector';
 import bgWaterscape from './Misty Teal Mountain Waterscape.png';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'report' | 'responder' | 'tracking'>('report');
   const [resetKey, setResetKey] = useState(0);
+  const [sosActive, setSosActive] = useState(false);
+
+  // One-gesture Shake SOS trigger (shake device 3x in 1.5s window)
+  useShakeDetector(() => {
+    setSosActive(true);
+  });
 
   return (
     <I18nProvider>
@@ -45,6 +54,12 @@ export const App: React.FC = () => {
               <ResponderDashboard />
             )}
           </main>
+
+          {/* One-Touch Persistent Floating Emergency SOS Button */}
+          <SOSButton onActivate={() => setSosActive(true)} />
+
+          {/* Full Screen Instant Voice SOS & Actionable First Aid Modal */}
+          {sosActive && <SOSPanicMode onClose={() => setSosActive(false)} />}
         </div>
       </div>
     </I18nProvider>

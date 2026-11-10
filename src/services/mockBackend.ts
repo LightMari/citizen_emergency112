@@ -1,11 +1,150 @@
-import { EmergencyReport, ReportStatus } from '../types/report';
+import {
+  EmergencyReport,
+  ReportStatus,
+  ResponseTeam,
+  TeamAvailabilityStatus,
+} from '../types/report';
 import { calculatePriorityScore } from '../utils/priority';
 import { checkForDuplicateReport } from '../utils/deduplication';
+import { calculateDistanceKm, calculateEstimatedTravelMinutes, findBestFitTeam } from '../utils/teamAssignment';
 import { offlineDb } from './offlineDb';
 
 const STORAGE_KEY = 'citizen_emergency_reports_v1';
+const TEAMS_STORAGE_KEY = 'citizen_emergency_response_teams_v1';
 const RATE_LIMIT_KEY = 'citizen_emergency_rate_limit';
 const BROADCAST_CHANNEL_NAME = 'citizen_emergency_realtime_channel';
+
+// Realistic sample seed response teams across Chennai, Tamil Nadu (Deliverable 2)
+export const INITIAL_RESPONSE_TEAMS: ResponseTeam[] = [
+  {
+    id: 'TNFRS-ENG-01',
+    name: 'TNFRS Station 01 (T. Nagar)',
+    category: 'Fire',
+    latitude: 13.0415,
+    longitude: 80.2337,
+    address: 'Usman Road, T. Nagar, Chennai 600017',
+    availability: 'Busy',
+    assignedIncidentId: 'REP-9021',
+    assignedIncidentType: 'Fire',
+    contactPhone: '+91 44 2434 0101',
+    stationName: 'T. Nagar Fire & Rescue Station',
+    vehicleType: 'Heavy Water Tender (4,500 L)',
+    personnelCount: 6,
+    updatedAt: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'AMB-108-04',
+    name: '108 ALS Ambulance Unit 04',
+    category: 'Medical',
+    latitude: 13.0780,
+    longitude: 80.2450,
+    address: 'EVR Periyar Salai, Kilpauk, Chennai 600010',
+    availability: 'Available',
+    assignedIncidentId: null,
+    assignedIncidentType: null,
+    contactPhone: '+91 108',
+    stationName: 'Kilpauk Medical College Hospital Hub',
+    vehicleType: 'Advanced Life Support (ALS) Ambulance',
+    personnelCount: 3,
+    updatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'AMB-108-09',
+    name: '108 Trauma Unit 09 (RGGGH)',
+    category: 'Medical',
+    latitude: 13.0815,
+    longitude: 80.2785,
+    address: 'Poonamallee High Rd, Chennai Central 600003',
+    availability: 'Available',
+    assignedIncidentId: null,
+    assignedIncidentType: null,
+    contactPhone: '+91 108',
+    stationName: 'Rajiv Gandhi Govt General Hospital',
+    vehicleType: 'Mobile Intensive Care Unit (ICU)',
+    personnelCount: 4,
+    updatedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'TNFRS-RIV-03',
+    name: 'TNFRS Marina Rapid Squad 03',
+    category: 'Fire',
+    latitude: 13.0588,
+    longitude: 80.2755,
+    address: 'Kamarajar Promenade, Triplicane, Chennai 600005',
+    availability: 'Available',
+    assignedIncidentId: null,
+    assignedIncidentType: null,
+    contactPhone: '+91 44 2844 0101',
+    stationName: 'Marina Coastal Fire Unit',
+    vehicleType: 'Rapid Intervention Vehicle (RIV)',
+    personnelCount: 5,
+    updatedAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'SDRF-USAR-02',
+    name: 'SDRF Urban Search & Rescue 02',
+    category: 'Rescue',
+    latitude: 13.0694,
+    longitude: 80.1948,
+    address: 'Koyambedu Wholesale Market Rd, Chennai 600107',
+    availability: 'Available',
+    assignedIncidentId: null,
+    assignedIncidentType: null,
+    contactPhone: '+91 44 2479 1078',
+    stationName: 'Koyambedu Disaster Base',
+    vehicleType: 'Heavy Hydraulic Extrication Truck',
+    personnelCount: 8,
+    updatedAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'POL-PEG-12',
+    name: 'GCP Pegasus Patrol Unit 12',
+    category: 'Police',
+    latitude: 13.0368,
+    longitude: 80.2676,
+    address: 'Luz Church Road, Mylapore, Chennai 600004',
+    availability: 'Available',
+    assignedIncidentId: null,
+    assignedIncidentType: null,
+    contactPhone: '+91 100',
+    stationName: 'Mylapore Police Range',
+    vehicleType: 'Emergency Response SUV',
+    personnelCount: 3,
+    updatedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'POL-FS-05',
+    name: 'GCP Flying Squad 05 (Anna Nagar)',
+    category: 'Police',
+    latitude: 13.0850,
+    longitude: 80.2100,
+    address: '2nd Avenue, Anna Nagar, Chennai 600040',
+    availability: 'Available',
+    assignedIncidentId: null,
+    assignedIncidentType: null,
+    contactPhone: '+91 100',
+    stationName: 'Anna Nagar West Division',
+    vehicleType: 'Armed Rapid Patrol Vehicle',
+    personnelCount: 4,
+    updatedAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'TNDMA-FLD-01',
+    name: 'TNDMA Flood Rescue Unit 01',
+    category: 'Disaster',
+    latitude: 12.9815,
+    longitude: 80.2180,
+    address: 'Velachery Bypass Road, Chennai 600042',
+    availability: 'Available',
+    assignedIncidentId: null,
+    assignedIncidentType: null,
+    contactPhone: '+91 44 2243 1078',
+    stationName: 'South Chennai Disaster Management Center',
+    vehicleType: 'Inflatable Motorboat & De-watering Pumps',
+    personnelCount: 6,
+    updatedAt: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
+  },
+];
 
 // Realistic sample seed reports for Chennai, Tamil Nadu
 export const INITIAL_SEED_REPORTS: EmergencyReport[] = [
@@ -24,7 +163,12 @@ export const INITIAL_SEED_REPORTS: EmergencyReport[] = [
     severity: 'Critical',
     priorityScore: 90,
     priorityTier: 'P1',
-    status: 'Dispatched',
+    status: 'Assigned',
+    assignedTeamId: 'TNFRS-ENG-01',
+    assignedTeamName: 'TNFRS Station 01 (T. Nagar)',
+    assignedAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+    distanceKm: 0.15,
+    estimatedArrivalMinutes: 3,
     contactPhone: '+91 94440 12345',
     isFalseReport: false,
     syncStatus: 'synced',
@@ -58,7 +202,7 @@ export const INITIAL_SEED_REPORTS: EmergencyReport[] = [
     severity: 'High',
     priorityScore: 65,
     priorityTier: 'P2',
-    status: 'Verified',
+    status: 'Reported',
     contactPhone: '+91 98401 56789',
     isFalseReport: false,
     syncStatus: 'synced',
@@ -81,7 +225,7 @@ export const INITIAL_SEED_REPORTS: EmergencyReport[] = [
     severity: 'Medium',
     priorityScore: 40,
     priorityTier: 'P3',
-    status: 'Received',
+    status: 'Reported',
     syncStatus: 'synced',
     media: [],
     createdAt: new Date(Date.now() - 55 * 60 * 1000).toISOString(),
@@ -102,94 +246,126 @@ export const INITIAL_SEED_REPORTS: EmergencyReport[] = [
     severity: 'Critical',
     priorityScore: 75,
     priorityTier: 'P1',
-    status: 'Resolved',
-    contactPhone: '+91 91760 88990',
+    status: 'Reported',
+    contactPhone: '+91 94441 98765',
+    isFalseReport: false,
     syncStatus: 'synced',
     media: [],
-    createdAt: new Date(Date.now() - 120 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
   },
   {
-    id: 'REP-5219',
+    id: 'REP-5119',
     type: 'Building Collapse',
-    description: 'Heritage commercial structure second floor balcony collapsed onto narrow street. Two pedestrians trapped beneath masonry rubble.',
-    latitude: 13.0891,
-    longitude: 80.2825,
-    address: 'NSC Bose Rd, Sowcarpet, George Town, Chennai, Tamil Nadu 600001',
-    landmark: 'Near Flower Bazaar Police Station',
+    description: 'Old three-storey heritage building masonry wall collapse during renovation. Debris blocking narrow lane with two workers trapped.',
+    latitude: 13.0881,
+    longitude: 80.2801,
+    address: 'Mint Street, Sowcarpet, Chennai, Tamil Nadu 600079',
+    landmark: 'Near Ekambareswarar Temple',
     peopleAffected: 5,
     injuries: true,
     trappedPersons: true,
     hazards: ['Structural collapse risk'],
     severity: 'Critical',
-    priorityScore: 88,
+    priorityScore: 85,
     priorityTier: 'P1',
-    status: 'Dispatched',
-    contactPhone: '+91 98410 44321',
+    status: 'In Progress',
+    assignedTeamId: 'SDRF-USAR-02',
+    assignedTeamName: 'SDRF Urban Search & Rescue 02',
+    assignedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    distanceKm: 9.4,
+    estimatedArrivalMinutes: 18,
+    contactPhone: '+91 98400 33445',
     isFalseReport: false,
     syncStatus: 'synced',
     media: [],
-    createdAt: new Date(Date.now() - 18 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
   },
   {
-    id: 'REP-4180',
-    type: 'Other',
-    description: 'Ammonia refrigeration valve leak detected in industrial ice packing warehouse. Pungent fumes leaking towards neighboring quarters.',
-    latitude: 13.1652,
-    longitude: 80.2911,
-    address: 'Ennore Expressway, Tiruvottiyur, Chennai, Tamil Nadu 600019',
-    landmark: 'Near Ennore Thermal Station gate',
-    peopleAffected: 2,
-    injuries: false,
-    trappedPersons: false,
-    hazards: ['Gas leak', 'Hazardous materials'],
-    severity: 'High',
-    priorityScore: 68,
-    priorityTier: 'P2',
-    status: 'Verified',
-    contactPhone: '+91 94441 77665',
-    isFalseReport: false,
-    syncStatus: 'synced',
-    media: [],
-    createdAt: new Date(Date.now() - 32 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 28 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'REP-3304',
-    type: 'Violence/Crime',
-    description: 'Crowd disturbance and armed altercation near long-distance bus terminus platforms. Commuters sheltering inside waiting hall.',
-    latitude: 13.0694,
-    longitude: 80.2056,
-    address: 'CMBT Bus Terminus, Koyambedu, Chennai, Tamil Nadu 600107',
-    landmark: 'Near Platform 3 entrance',
+    id: 'REP-4093',
+    type: 'Fire',
+    description: 'Industrial LPG pipeline leakage and flash fire near refinery processing gate. High thermal radiation observed.',
+    latitude: 13.1612,
+    longitude: 80.3015,
+    address: 'Manali Express Rd, Tiruvottiyur, Chennai, Tamil Nadu 600019',
+    landmark: 'Near Manali Industrial Estate',
     peopleAffected: 8,
+    injuries: true,
+    trappedPersons: false,
+    hazards: ['Gas leak', 'Fire/smoke', 'Hazardous materials'],
+    severity: 'Critical',
+    priorityScore: 95,
+    priorityTier: 'P1',
+    status: 'Assigned',
+    assignedTeamId: 'TNFRS-RIV-03',
+    assignedTeamName: 'TNFRS Marina Rapid Squad 03',
+    assignedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+    distanceKm: 11.8,
+    estimatedArrivalMinutes: 22,
+    contactPhone: '+91 97910 22334',
+    isFalseReport: false,
+    syncStatus: 'synced',
+    media: [],
+    createdAt: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'REP-3208',
+    type: 'Violence/Crime',
+    description: 'Crowd disturbance and armed altercation near long-distance bus terminus during peak travel rush.',
+    latitude: 13.0694,
+    longitude: 80.2057,
+    address: 'Koyambedu Wholesale Market Rd, Koyambedu, Chennai, Tamil Nadu 600107',
+    landmark: 'Near CMBT Platform 1 Gate',
+    peopleAffected: 12,
     injuries: true,
     trappedPersons: false,
     hazards: ['Armed threat'],
     severity: 'High',
-    priorityScore: 72,
+    priorityScore: 70,
     priorityTier: 'P2',
-    status: 'Received',
-    contactPhone: '+91 97909 33210',
+    status: 'Resolved',
+    contactPhone: '+91 98402 11223',
     isFalseReport: false,
     syncStatus: 'synced',
     media: [],
-    createdAt: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 180 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
   },
 ];
 
-// Broadcast channel for cross-tab communication (simulating WebSockets)
+// BroadcastChannel setup
 let broadcastChannel: BroadcastChannel | null = null;
 if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-  broadcastChannel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+  try {
+    broadcastChannel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+  } catch (e) {
+    console.warn('BroadcastChannel initialization error:', e);
+  }
 }
 
 export type RealtimeEvent =
   | { type: 'NEW_REPORT'; report: EmergencyReport }
   | { type: 'STATUS_UPDATED'; reportId: string; status: ReportStatus; updatedAt: string }
-  | { type: 'REPORT_FLAGGED_FALSE'; reportId: string; reason: string };
+  | { type: 'REPORT_FLAGGED_FALSE'; reportId: string; reason: string }
+  | {
+      type: 'TEAM_ASSIGNED';
+      reportId: string;
+      teamId: string;
+      teamName: string;
+      report: EmergencyReport;
+      team: ResponseTeam;
+    }
+  | {
+      type: 'TEAM_UNASSIGNED';
+      reportId: string;
+      teamId: string;
+      report: EmergencyReport;
+      team?: ResponseTeam;
+    }
+  | { type: 'TEAM_UPDATED'; team: ResponseTeam }
+  | { type: 'TEAM_CREATED'; team: ResponseTeam };
 
 type EventListener = (event: RealtimeEvent) => void;
 const listeners: Set<EventListener> = new Set();
@@ -218,7 +394,10 @@ function broadcastEvent(event: RealtimeEvent) {
   }
 }
 
-// Storage helpers
+// ==========================================
+// REPORTS STORAGE HELPERS
+// ==========================================
+
 export function getStoredReports(): EmergencyReport[] {
   if (typeof window === 'undefined') return INITIAL_SEED_REPORTS;
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -239,6 +418,212 @@ export function saveStoredReports(reports: EmergencyReport[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
   // Also update Dexie cached reports in background
   offlineDb.cachedReports.bulkPut(reports).catch(() => {});
+}
+
+// ==========================================
+// RESPONSE TEAMS STORAGE HELPERS (Deliverable 2)
+// ==========================================
+
+export function getStoredTeams(): ResponseTeam[] {
+  if (typeof window === 'undefined') return INITIAL_RESPONSE_TEAMS;
+  const stored = localStorage.getItem(TEAMS_STORAGE_KEY);
+  if (!stored) {
+    localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(INITIAL_RESPONSE_TEAMS));
+    return INITIAL_RESPONSE_TEAMS;
+  }
+  try {
+    return JSON.parse(stored);
+  } catch (e) {
+    console.error('Failed to parse stored teams', e);
+    return INITIAL_RESPONSE_TEAMS;
+  }
+}
+
+export function saveStoredTeams(teams: ResponseTeam[]) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify(teams));
+}
+
+export function createResponseTeam(
+  teamData: Omit<ResponseTeam, 'id' | 'updatedAt'>
+): ResponseTeam {
+  const teams = getStoredTeams();
+  const id = `TEAM-${teamData.category.substring(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
+  const now = new Date().toISOString();
+
+  const newTeam: ResponseTeam = {
+    ...teamData,
+    id,
+    updatedAt: now,
+  };
+
+  const updated = [newTeam, ...teams];
+  saveStoredTeams(updated);
+  broadcastEvent({ type: 'TEAM_CREATED', team: newTeam });
+  return newTeam;
+}
+
+export function updateTeamAvailability(
+  teamId: string,
+  availability: TeamAvailabilityStatus,
+  assignedIncidentId: string | null = null
+): ResponseTeam | undefined {
+  const teams = getStoredTeams();
+  const index = teams.findIndex((t) => t.id === teamId);
+  if (index === -1) return undefined;
+
+  const now = new Date().toISOString();
+  teams[index].availability = availability;
+  teams[index].assignedIncidentId = assignedIncidentId;
+  teams[index].updatedAt = now;
+
+  saveStoredTeams(teams);
+  broadcastEvent({ type: 'TEAM_UPDATED', team: teams[index] });
+  return teams[index];
+}
+
+// ==========================================
+// TEAM ASSIGNMENT & LIFECYCLE (Deliverables 3 & 4)
+// ==========================================
+
+export function assignTeamToIncident(
+  incidentId: string,
+  teamId: string
+): { report: EmergencyReport; team: ResponseTeam } {
+  const reports = getStoredReports();
+  const teams = getStoredTeams();
+
+  const reportIndex = reports.findIndex((r) => r.id === incidentId);
+  const teamIndex = teams.findIndex((t) => t.id === teamId);
+
+  if (reportIndex === -1) throw new Error(`Incident #${incidentId} not found`);
+  if (teamIndex === -1) throw new Error(`Response Team #${teamId} not found`);
+
+  const report = reports[reportIndex];
+  const team = teams[teamIndex];
+
+  // Calculate distance and ETA
+  const distanceKm = calculateDistanceKm(
+    report.latitude,
+    report.longitude,
+    team.latitude,
+    team.longitude
+  );
+  const estimatedArrivalMinutes = calculateEstimatedTravelMinutes(distanceKm);
+  const now = new Date().toISOString();
+
+  // If incident already had a different team, free that team
+  if (report.assignedTeamId && report.assignedTeamId !== teamId) {
+    const prevTeamIdx = teams.findIndex((t) => t.id === report.assignedTeamId);
+    if (prevTeamIdx !== -1) {
+      teams[prevTeamIdx].availability = 'Available';
+      teams[prevTeamIdx].assignedIncidentId = null;
+      teams[prevTeamIdx].assignedIncidentType = null;
+    }
+  }
+
+  // Update Report
+  const updatedReport: EmergencyReport = {
+    ...report,
+    status: 'Assigned',
+    assignedTeamId: team.id,
+    assignedTeamName: team.name,
+    assignedAt: now,
+    distanceKm,
+    estimatedArrivalMinutes,
+    updatedAt: now,
+  };
+  reports[reportIndex] = updatedReport;
+
+  // Update Team
+  const updatedTeam: ResponseTeam = {
+    ...team,
+    availability: 'Busy',
+    assignedIncidentId: report.id,
+    assignedIncidentType: report.type,
+    updatedAt: now,
+  };
+  teams[teamIndex] = updatedTeam;
+
+  saveStoredReports(reports);
+  saveStoredTeams(teams);
+
+  broadcastEvent({
+    type: 'TEAM_ASSIGNED',
+    reportId: report.id,
+    teamId: team.id,
+    teamName: team.name,
+    report: updatedReport,
+    team: updatedTeam,
+  });
+
+  return { report: updatedReport, team: updatedTeam };
+}
+
+export function autoAssignNearestTeam(
+  incidentId: string
+): { report: EmergencyReport; team: ResponseTeam } | null {
+  const reports = getStoredReports();
+  const teams = getStoredTeams();
+  const report = reports.find((r) => r.id === incidentId);
+  if (!report) return null;
+
+  const bestFit = findBestFitTeam(report, teams);
+  if (!bestFit) return null;
+
+  return assignTeamToIncident(report.id, bestFit.team.id);
+}
+
+export function unassignTeamFromIncident(
+  incidentId: string
+): { report: EmergencyReport; team?: ResponseTeam } {
+  const reports = getStoredReports();
+  const teams = getStoredTeams();
+
+  const reportIndex = reports.findIndex((r) => r.id === incidentId);
+  if (reportIndex === -1) throw new Error(`Incident #${incidentId} not found`);
+
+  const report = reports[reportIndex];
+  const prevTeamId = report.assignedTeamId;
+  const now = new Date().toISOString();
+
+  let unassignedTeam: ResponseTeam | undefined;
+  if (prevTeamId) {
+    const teamIndex = teams.findIndex((t) => t.id === prevTeamId);
+    if (teamIndex !== -1) {
+      teams[teamIndex].availability = 'Available';
+      teams[teamIndex].assignedIncidentId = null;
+      teams[teamIndex].assignedIncidentType = null;
+      teams[teamIndex].updatedAt = now;
+      unassignedTeam = teams[teamIndex];
+      saveStoredTeams(teams);
+    }
+  }
+
+  const updatedReport: EmergencyReport = {
+    ...report,
+    status: 'Reported',
+    assignedTeamId: null,
+    assignedTeamName: null,
+    assignedAt: null,
+    distanceKm: null,
+    estimatedArrivalMinutes: null,
+    updatedAt: now,
+  };
+  reports[reportIndex] = updatedReport;
+  saveStoredReports(reports);
+
+  if (prevTeamId) {
+    broadcastEvent({
+      type: 'TEAM_UNASSIGNED',
+      reportId: report.id,
+      teamId: prevTeamId,
+      report: updatedReport,
+      team: unassignedTeam,
+    });
+  }
+
+  return { report: updatedReport, team: unassignedTeam };
 }
 
 // Rate-limiting check: max 5 reports in 10 minutes
@@ -274,7 +659,17 @@ export function recordRateLimitSubmission() {
 
 // Submit a new report
 export async function submitEmergencyReport(
-  data: Omit<EmergencyReport, 'id' | 'priorityScore' | 'priorityTier' | 'status' | 'syncStatus' | 'createdAt' | 'updatedAt'>,
+  data: Omit<
+    EmergencyReport,
+    | 'id'
+    | 'priorityScore'
+    | 'priorityTier'
+    | 'priorityRank'
+    | 'status'
+    | 'syncStatus'
+    | 'createdAt'
+    | 'updatedAt'
+  >,
   isOffline = false
 ): Promise<{ report: EmergencyReport; duplicateWarning?: string }> {
   // Check rate limit
@@ -285,13 +680,14 @@ export async function submitEmergencyReport(
     );
   }
 
-  // Calculate priority score & tier
+  // Calculate priority score & tier with category weighting
   const priority = calculatePriorityScore({
     severity: data.severity,
     trappedPersons: data.trappedPersons,
     injuries: data.injuries,
     peopleAffected: data.peopleAffected,
     hazards: data.hazards,
+    category: data.type,
   });
 
   const existing = getStoredReports();
@@ -314,7 +710,8 @@ export async function submitEmergencyReport(
     id,
     priorityScore: priority.score,
     priorityTier: priority.tier,
-    status: 'Received',
+    priorityRank: priority.rank,
+    status: 'Reported',
     syncStatus: isOffline ? 'pending' : 'synced',
     isPotentialDuplicate: dupCheck.isDuplicate,
     duplicateOfId: dupCheck.duplicateOf?.id,
@@ -355,7 +752,7 @@ export async function submitEmergencyReport(
   };
 }
 
-// Update report status (Responder action)
+// Update report status (Responder action) - Deliverable 4
 export function updateReportStatus(reportId: string, status: ReportStatus) {
   const reports = getStoredReports();
   const index = reports.findIndex((r) => r.id === reportId);
@@ -364,6 +761,21 @@ export function updateReportStatus(reportId: string, status: ReportStatus) {
   const now = new Date().toISOString();
   reports[index].status = status;
   reports[index].updatedAt = now;
+
+  // When an incident is marked Resolved, automatically free its assigned team!
+  if (status === 'Resolved' && reports[index].assignedTeamId) {
+    const teams = getStoredTeams();
+    const teamIndex = teams.findIndex((t) => t.id === reports[index].assignedTeamId);
+    if (teamIndex !== -1) {
+      teams[teamIndex].availability = 'Available';
+      teams[teamIndex].assignedIncidentId = null;
+      teams[teamIndex].assignedIncidentType = null;
+      teams[teamIndex].updatedAt = now;
+      saveStoredTeams(teams);
+      broadcastEvent({ type: 'TEAM_UPDATED', team: teams[teamIndex] });
+    }
+  }
+
   saveStoredReports(reports);
 
   broadcastEvent({
@@ -396,7 +808,8 @@ export function flagFalseReport(reportId: string, reason: string) {
 // Reset data to seeds (helpful for testing & demo)
 export function resetDemoData() {
   saveStoredReports(INITIAL_SEED_REPORTS);
+  saveStoredTeams(INITIAL_RESPONSE_TEAMS);
   localStorage.removeItem(RATE_LIMIT_KEY);
   offlineDb.offlineQueue.clear().catch(() => {});
-  return INITIAL_SEED_REPORTS;
+  return { reports: INITIAL_SEED_REPORTS, teams: INITIAL_RESPONSE_TEAMS };
 }
