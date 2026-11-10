@@ -4,7 +4,7 @@ import { ResponderAnalyticsCharts } from '../components/responder/ResponderAnaly
 import { INITIAL_SEED_REPORTS } from '../services/mockBackend';
 
 describe('ResponderAnalyticsCharts Component', () => {
-  it('renders all 4 criteria bar chart sections and micro-KPIs', () => {
+  it('renders core criteria bar chart sections, operational insights, and micro-KPIs', () => {
     const handleSelectType = vi.fn();
     const handleSelectPriority = vi.fn();
     const handleSelectStatus = vi.fn();
@@ -26,13 +26,23 @@ describe('ResponderAnalyticsCharts Component', () => {
     expect(screen.getByText(/Queue Load/i)).toBeInTheDocument();
     expect(screen.getByText(/Avg Priority Score/i)).toBeInTheDocument();
 
-    // Chart Sections
+    // 6 Operational Insights cards
+    expect(screen.getByText(/Total Incidents/i)).toBeInTheDocument();
+    expect(screen.getByText(/Critical Incidents/i)).toBeInTheDocument();
+    expect(screen.getByText(/Available Teams/i)).toBeInTheDocument();
+    expect(screen.getByText(/Busy Response Teams/i)).toBeInTheDocument();
+    expect(screen.getByText(/Assigned Incidents/i)).toBeInTheDocument();
+    expect(screen.getByText(/Resolved Incidents/i)).toBeInTheDocument();
+
+    // Main Chart Sections
     expect(screen.getByRole('heading', { name: /Incident Classification Criteria/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Priority Scoring Criteria/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Dispatch Lifecycle Status/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Hazard & Casualty Criteria Multipliers/i })).toBeInTheDocument();
 
-    // Specific bars
+    // Ensure removed sections are no longer present
+    expect(screen.queryByRole('heading', { name: /Dispatch Lifecycle Status/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Hazard & Casualty Criteria Multipliers/i })).not.toBeInTheDocument();
+
+    // Specific category bars
     expect(screen.getByText(/Fire & Smoke/i)).toBeInTheDocument();
     expect(screen.getByText(/Medical Emergency/i)).toBeInTheDocument();
     expect(screen.getByText(/Flood \/ Waterlogging/i)).toBeInTheDocument();
@@ -78,26 +88,5 @@ describe('ResponderAnalyticsCharts Component', () => {
     fireEvent.click(p1Bar);
 
     expect(handleSelectPriority).toHaveBeenCalledWith('P1');
-  });
-
-  it('triggers onSelectStatus when clicking a status bar', () => {
-    const handleSelectStatus = vi.fn();
-
-    render(
-      <ResponderAnalyticsCharts
-        reports={INITIAL_SEED_REPORTS}
-        selectedType="ALL"
-        onSelectType={vi.fn()}
-        selectedPriority="ALL"
-        onSelectPriority={vi.fn()}
-        selectedStatus="ALL"
-        onSelectStatus={handleSelectStatus}
-      />
-    );
-
-    const dispatchedBar = screen.getByRole('button', { name: /Dispatched/i });
-    fireEvent.click(dispatchedBar);
-
-    expect(handleSelectStatus).toHaveBeenCalledWith('Dispatched');
   });
 });
