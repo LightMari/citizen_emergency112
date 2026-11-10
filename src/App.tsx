@@ -4,7 +4,6 @@ import { Navbar, NavigationTab } from './components/common/Navbar';
 import { PrivacyConsentModal } from './components/common/PrivacyConsentModal';
 import { EmergencyReportStepper } from './components/report/EmergencyReportStepper';
 import { ResponderDashboard } from './components/responder/ResponderDashboard';
-import { DepartmentDashboard } from './components/department/DepartmentDashboard';
 import { PublicTrackingView } from './components/tracking/PublicTrackingView';
 import SOSButton from './components/sos/SOSButton';
 import { SOSPanicMode } from './components/sos/SOSPanicMode';
@@ -54,7 +53,6 @@ export const App: React.FC = () => {
               <EmergencyReportStepper onOpenResponder={() => setActiveTab('responder')} />
             )}
             {activeTab === 'tracking' && <PublicTrackingView />}
-            {activeTab === 'departments' && <DepartmentDashboard />}
             {activeTab === 'responder' && <ResponderDashboard key="responder" initialViewMode="split" />}
             {activeTab === 'charts' && <ResponderDashboard key="charts" initialViewMode="analytics" />}
           </main>

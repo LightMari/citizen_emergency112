@@ -8,14 +8,13 @@ import {
   Globe,
   RotateCcw,
   Search,
-  Building2,
   BarChart3,
 } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { resetDemoData } from '../../services/mockBackend';
 
-export type NavigationTab = 'report' | 'tracking' | 'departments' | 'responder' | 'charts';
+export type NavigationTab = 'report' | 'tracking' | 'responder' | 'charts';
 
 interface NavbarProps {
   activeTab: NavigationTab;
@@ -57,14 +56,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onReset
       icon: Search,
       activeBorderClass: 'bg-amber-500/10 text-amber-200 border-amber-500/40 shadow-sm',
       iconColor: 'text-amber-400',
-    },
-    {
-      id: 'departments',
-      label: 'Departments',
-      shortLabel: 'Depts',
-      icon: Building2,
-      activeBorderClass: 'bg-purple-500/10 text-purple-200 border-purple-500/40 shadow-sm',
-      iconColor: 'text-purple-400',
     },
     {
       id: 'responder',
