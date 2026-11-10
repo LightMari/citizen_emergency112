@@ -9,11 +9,15 @@ import {
   MapPin,
   Volume2,
   RefreshCw,
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { EmergencyReport, EmergencyType, PriorityTier, ReportStatus } from '../../types/report';
 import { getStoredReports, subscribeToRealtimeReports } from '../../services/mockBackend';
 import { ResponderMap } from './ResponderMap';
 import { ReportDetailModal } from './ReportDetailModal';
+import { ResponderAnalyticsCharts } from './ResponderAnalyticsCharts';
 import { useI18n } from '../../i18n';
 
 export const ResponderDashboard: React.FC = () => {
@@ -21,11 +25,12 @@ export const ResponderDashboard: React.FC = () => {
   const [reports, setReports] = useState<EmergencyReport[]>(() => getStoredReports());
   const [selectedReport, setSelectedReport] = useState<EmergencyReport | null>(null);
 
-  // Filters
+  // Filters & View state
   const [typeFilter, setTypeFilter] = useState<EmergencyType | 'ALL'>('ALL');
   const [priorityFilter, setPriorityFilter] = useState<PriorityTier | 'ALL'>('ALL');
   const [statusFilter, setStatusFilter] = useState<ReportStatus | 'ALL'>('ALL');
-  const [viewMode, setViewMode] = useState<'split' | 'list' | 'map'>('split');
+  const [viewMode, setViewMode] = useState<'split' | 'list' | 'map' | 'analytics'>('split');
+  const [showDashboardCharts, setShowDashboardCharts] = useState(true);
   const [newReportAlert, setNewReportAlert] = useState<EmergencyReport | null>(null);
 
   const refreshReports = () => {
@@ -178,6 +183,18 @@ export const ResponderDashboard: React.FC = () => {
               <MapIcon className="w-3.5 h-3.5 stroke-[1.5]" />
               <span className="hidden sm:inline">Map</span>
             </button>
+            <button
+              onClick={() => setViewMode('analytics')}
+              className={`px-2.5 py-1.5 rounded-[6px] text-xs font-medium flex items-center space-x-1.5 transition-colors duration-150 ${
+                viewMode === 'analytics'
+                  ? 'bg-red-500/10 text-red-200 border border-red-500/40 shadow-sm'
+                  : 'text-graphite-secondary hover:text-red-300 hover:bg-red-500/5'
+              }`}
+              title="Criteria Bar Charts & Analytics"
+            >
+              <BarChart3 className="w-3.5 h-3.5 stroke-[1.5]" />
+              <span className="hidden sm:inline">Charts</span>
+            </button>
           </div>
 
           <button
@@ -251,76 +268,207 @@ export const ResponderDashboard: React.FC = () => {
         </button>
       </div>
 
-      {/* FILTER CONTROLS BAR */}
-      <div className="bg-graphite-card border border-graphite-border rounded-card p-3 flex flex-wrap items-center gap-2.5">
-        <div className="flex items-center space-x-1.5 text-xs text-graphite-secondary">
-          <Filter className="w-3.5 h-3.5 stroke-[1.5] text-graphite-muted" />
-          <span>Filters:</span>
+      {/* FILTER CONTROLS BAR & CHARTS TOGGLE */}
+      <div className="bg-graphite-card border border-graphite-border rounded-card p-3 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center space-x-1.5 text-xs text-graphite-secondary">
+            <Filter className="w-3.5 h-3.5 stroke-[1.5] text-graphite-muted" />
+            <span>Filters:</span>
+          </div>
+
+          {/* Emergency Type Filter */}
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as any)}
+            className="bg-graphite-raised border border-graphite-border text-xs rounded-control px-2.5 py-1.5 text-graphite-text focus:outline-none focus:border-graphite-border-strong"
+          >
+            <option value="ALL">All incident types</option>
+            <option value="Fire">Fire</option>
+            <option value="Medical">Medical</option>
+            <option value="Flood">Flood</option>
+            <option value="Earthquake">Earthquake</option>
+            <option value="Road Accident">Road Accident</option>
+            <option value="Building Collapse">Building Collapse</option>
+            <option value="Violence/Crime">Violence/Crime</option>
+            <option value="Other">Other</option>
+          </select>
+
+          {/* Priority Filter */}
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value as any)}
+            className="bg-graphite-raised border border-graphite-border text-xs rounded-control px-2.5 py-1.5 text-graphite-text focus:outline-none focus:border-graphite-border-strong font-mono"
+          >
+            <option value="ALL">All priority tiers</option>
+            <option value="P1">P1 - Critical (≥75)</option>
+            <option value="P2">P2 - High (50-74)</option>
+            <option value="P3">P3 - Medium (25-49)</option>
+            <option value="P4">P4 - Low (&lt;25)</option>
+          </select>
+
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            className="bg-graphite-raised border border-graphite-border text-xs rounded-control px-2.5 py-1.5 text-graphite-text focus:outline-none focus:border-graphite-border-strong"
+          >
+            <option value="ALL">All statuses</option>
+            <option value="Received">Received</option>
+            <option value="Verified">Verified</option>
+            <option value="Dispatched">Dispatched</option>
+            <option value="Resolved">Resolved</option>
+          </select>
+
+          {(typeFilter !== 'ALL' || priorityFilter !== 'ALL' || statusFilter !== 'ALL') && (
+            <button
+              onClick={() => {
+                setTypeFilter('ALL');
+                setPriorityFilter('ALL');
+                setStatusFilter('ALL');
+              }}
+              className="text-xs text-graphite-secondary hover:text-graphite-text underline"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
 
-        {/* Emergency Type Filter */}
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value as any)}
-          className="bg-graphite-raised border border-graphite-border text-xs rounded-control px-2.5 py-1.5 text-graphite-text focus:outline-none focus:border-graphite-border-strong"
-        >
-          <option value="ALL">All incident types</option>
-          <option value="Fire">Fire</option>
-          <option value="Medical">Medical</option>
-          <option value="Flood">Flood</option>
-          <option value="Earthquake">Earthquake</option>
-          <option value="Road Accident">Road Accident</option>
-          <option value="Building Collapse">Building Collapse</option>
-          <option value="Violence/Crime">Violence/Crime</option>
-          <option value="Other">Other</option>
-        </select>
-
-        {/* Priority Filter */}
-        <select
-          value={priorityFilter}
-          onChange={(e) => setPriorityFilter(e.target.value as any)}
-          className="bg-graphite-raised border border-graphite-border text-xs rounded-control px-2.5 py-1.5 text-graphite-text focus:outline-none focus:border-graphite-border-strong font-mono"
-        >
-          <option value="ALL">All priority tiers</option>
-          <option value="P1">P1 - Critical (≥75)</option>
-          <option value="P2">P2 - High (50-74)</option>
-          <option value="P3">P3 - Medium (25-49)</option>
-          <option value="P4">P4 - Low (&lt;25)</option>
-        </select>
-
-        {/* Status Filter */}
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
-          className="bg-graphite-raised border border-graphite-border text-xs rounded-control px-2.5 py-1.5 text-graphite-text focus:outline-none focus:border-graphite-border-strong"
-        >
-          <option value="ALL">All statuses</option>
-          <option value="Received">Received</option>
-          <option value="Verified">Verified</option>
-          <option value="Dispatched">Dispatched</option>
-          <option value="Resolved">Resolved</option>
-        </select>
-
-        {(typeFilter !== 'ALL' || priorityFilter !== 'ALL' || statusFilter !== 'ALL') && (
+        {/* Quick Criteria Charts Toggle Button */}
+        {viewMode !== 'analytics' && (
           <button
-            onClick={() => {
-              setTypeFilter('ALL');
-              setPriorityFilter('ALL');
-              setStatusFilter('ALL');
-            }}
-            className="text-xs text-graphite-secondary hover:text-graphite-text underline ml-auto"
+            type="button"
+            onClick={() => setShowDashboardCharts((prev) => !prev)}
+            className={`px-3 py-1.5 rounded-control text-xs font-medium flex items-center space-x-1.5 transition-colors duration-150 border ${
+              showDashboardCharts
+                ? 'bg-red-500/10 text-red-300 border-red-500/40 shadow-sm'
+                : 'bg-graphite-raised text-graphite-secondary hover:text-graphite-text border-graphite-border hover:border-graphite-border-strong'
+            }`}
           >
-            Clear filters
+            <BarChart3 className="w-3.5 h-3.5 stroke-[1.5]" />
+            <span>{showDashboardCharts ? 'Hide Criteria Charts' : 'Criteria Bar Charts'}</span>
+            {showDashboardCharts ? (
+              <ChevronUp className="w-3 h-3 stroke-[1.5]" />
+            ) : (
+              <ChevronDown className="w-3 h-3 stroke-[1.5]" />
+            )}
           </button>
         )}
       </div>
 
+      {/* CRITERIA BAR CHARTS DASHBOARD SECTION */}
+      {(showDashboardCharts || viewMode === 'analytics') && (
+        <ResponderAnalyticsCharts
+          reports={reports}
+          selectedType={typeFilter}
+          onSelectType={setTypeFilter}
+          selectedPriority={priorityFilter}
+          onSelectPriority={setPriorityFilter}
+          selectedStatus={statusFilter}
+          onSelectStatus={setStatusFilter}
+        />
+      )}
+
+      {/* IN ANALYTICS VIEW: MATCHING FILTERED INCIDENTS TABLE */}
+      {viewMode === 'analytics' && (
+        <div className="bg-graphite-card border border-graphite-border rounded-card p-4 sm:p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-graphite-text">
+                Matching Incidents ({filteredReports.length} reports)
+              </h3>
+              <p className="text-[11px] text-graphite-secondary">
+                Filtered by active criteria selected in the bar charts above
+              </p>
+            </div>
+            <button
+              onClick={() => setViewMode('split')}
+              className="text-xs font-medium text-sky-400 hover:text-sky-300 flex items-center space-x-1"
+            >
+              <span>View on Map & List</span>
+              <LayoutGrid className="w-3 h-3 stroke-[1.5]" />
+            </button>
+          </div>
+
+          {filteredReports.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-graphite-border text-graphite-muted text-[11px]">
+                    <th className="py-2 px-3">Report ID</th>
+                    <th className="py-2 px-3">Type</th>
+                    <th className="py-2 px-3">Priority</th>
+                    <th className="py-2 px-3">Status</th>
+                    <th className="py-2 px-3">Address / Landmark</th>
+                    <th className="py-2 px-3">Casualties</th>
+                    <th className="py-2 px-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-graphite-border">
+                  {filteredReports.map((report) => (
+                    <tr
+                      key={report.id}
+                      onClick={() => setSelectedReport(report)}
+                      className="hover:bg-graphite-raised/50 cursor-pointer transition-colors"
+                    >
+                      <td className="py-2.5 px-3 font-mono font-medium text-graphite-text">
+                        {report.id}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span className="font-medium text-graphite-text">{report.type}</span>
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${priorityBadges[report.priorityTier]}`}>
+                          {report.priorityTier} ({report.priorityScore})
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${statusBadges[report.status]}`}>
+                          {report.status}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 max-w-[220px] truncate text-graphite-secondary">
+                        {report.address || 'GPS Coordinates'}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        {report.injuries ? (
+                          <span className="text-red-400 font-medium">Injuries</span>
+                        ) : report.trappedPersons ? (
+                          <span className="text-red-400 font-medium">Trapped</span>
+                        ) : (
+                          <span className="text-graphite-muted">None</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-right">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedReport(report);
+                          }}
+                          className="px-2 py-1 bg-graphite-raised hover:bg-graphite-surface border border-graphite-border text-[11px] font-medium rounded text-graphite-text"
+                        >
+                          Triage
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-6 text-center text-graphite-muted text-xs bg-graphite-raised/30 rounded-control">
+              No reports match the selected criteria filter.
+            </div>
+          )}
+        </div>
+      )}
+
       {/* MAIN CONTENT WORKSPACE: LIST & MAP */}
-      <div
-        className={`grid gap-5 ${
-          viewMode === 'split' ? 'grid-cols-1 lg:grid-cols-12' : 'grid-cols-1'
-        }`}
-      >
+      {viewMode !== 'analytics' && (
+        <div
+          className={`grid gap-5 ${
+            viewMode === 'split' ? 'grid-cols-1 lg:grid-cols-12' : 'grid-cols-1'
+          }`}
+        >
         {/* LIST VIEW */}
         {(viewMode === 'split' || viewMode === 'list') && (
           <div
@@ -421,6 +569,7 @@ export const ResponderDashboard: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* DETAIL INSPECTION MODAL */}
       {selectedReport && (
